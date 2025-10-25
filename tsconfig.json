@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "exclude": ["node_modules", "dist"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.astro"
+  ],
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "lib": ["es2022"],
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "noEmit": true
+  }
+}

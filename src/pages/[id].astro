@@ -1,0 +1,333 @@
+---
+// import Asciify from "../components/Asciify.jsx";
+import { ClientRouter } from "astro:transitions";
+
+// export const prerender = false;
+
+if (Astro.request.method === 'POST') {
+  const formData: FormData = (await Astro.request.formData()) as FormData;
+  const eid = formData.get('eid');
+
+  if (eid) {
+    return Astro.redirect('/' + eid);
+  }
+}
+
+
+const numberFormat = (num: any) => {
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+};
+
+const url = new URL(Astro.request.url);
+
+// const mode = searchParams.get("mode") || "next";
+const { id } = Astro.params;
+
+
+let meta = await fetch('https://mainnet.api.calldata.space/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
+  x.json(),
+);
+
+if (meta.media_type === 'image' && meta.image_removed_by_request_of_rights_holder) {
+  const resp = await fetch('https://mainnet.api.calldata.space/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
+    x.json(),
+  );
+  meta = resp.data;
+}
+
+
+if (meta.error) {
+  return Astro.redirect('/498580')
+}
+
+const res = meta.result;
+const isNotImage = res.media_type !== 'image' || res.content_type === 'image/svg+xml';
+
+const num = Number(res.ethscription_number);
+
+const prev = num - 1 < 0 ? 0 : num - 1;
+const next = num + 1;
+
+// if (!meta.mimetype.startsWith("image/") || meta.mimetype === "image/svg+xml") {
+//   const newLoc = mode === "next" ? next : prev;
+//   console.log(newLoc);
+//   // return Astro.redirect("/?error=not-an-image");
+//   return Astro.redirect("/" + newLoc + "?ts=" + Date.now());
+// }
+
+
+const ogHref = url.origin + url.pathname;
+// const ogEths = `Ethscription #${num.toLocaleString()}`;
+const ogDescription = `ASCII-fy your Ethscription Image`;
+const ogTitle = `Asciify.Art - Ethscription #${num.toLocaleString()}`
+const ogImage = `https://mainnet.api.calldata.space/ethscriptions/${res.ethscription_number}/content`;
+// const imgUrl = `${url.origin}/og/${res.transaction_hash}-${isNotImage ? 0 : 1}.png?ts=${Date.now()}`;
+// // const imgUrl = `https://api.wgw.lol/api/ethscriptions/${isNotImage ? 0 : meta.transaction_hash}/data?noscale=1`;
+// const ogImage = `https://ogcdn.net/6064b869-74ed-4eb9-b76c-0b701ffe7e6b/v4/asciify.art/${encodeURIComponent(ogEths)}/${encodeURIComponent(imgUrl)}/og.png`;
+
+// delete meta.valid_listings;
+// delete meta.valid_transfers;
+// delete meta.collection_items;
+// delete meta.collections;
+
+let backgroundAsciiContent = JSON.stringify(res);
+while (backgroundAsciiContent.length < 18_000) {
+  const curr = backgroundAsciiContent.length;
+  backgroundAsciiContent += curr > 1000 ? backgroundAsciiContent.slice(0, 1000) : backgroundAsciiContent;
+}
+
+const blockscript = url.searchParams.get('blockscript') || null;
+
+// === Sepolia
+// highscript woff2 gzip = 0x2f8397abd2d4244c3c2196fcabae519ef625ac292eeeccbbf632b01252366702
+// highscript otf gzip = 0x9dec27a0a69048775add0de1577cd80761a2d6e4dcbf49482e179bea12ab52c7
+// lowscript woff2 gzip = 0x0330e1fa0186056902a678ccacef184a8fb0312a653ae4e0efc78765226c2a60
+// lowscript otf gzip = 0xc5a5347cb02f065ae48428249b6906da832325f00d89bd9cd15abdd277acbf65
+
+// highscript woff2 NO-GZIP = 0x827865efd69b9fe282b1a6dc7ae39ccd280712c2796631c416edf7181e7b1d73
+// highscript otf NO-GZIP = 0xc61bbc261fd86915572c42ce1819dd9ebeaffac399071d0580c7aee8889d0ad2
+// lowscript woff2 NO-GZIP = 0x977b486a8251cb3c1261b47a43504c5ddc2ca7146a106de2b476ff78beb90d53
+// lowscript otf NO-GZIP = 0xba4a9f9df378b50651dd4cb2f1c812754f25e04c55baf729230a235899ea2be0
+
+// === Mainnet
+// highscript woff2 gzip = 0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a
+// highscript otf gzip = 0xcbf0c8a0c61f8018f9ad186e4aaa300faad892c6cbfa398841814f02c3bdea30
+// lowscript woff2 gzip = 0x665ba2d452904e03e1943e0800af42468e107b614ee4ec59d377a66ffbe5ea5d
+// lowscript otf gzip = 0x50c42bd4696c50868b147396a707ede771abb4bd10acbfdd1af00ef186e6187f
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="preload" as="font" type="font/woff2" id="highscript-woff" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a/content"/>
+    <link rel="preload" as="font" type="font/otf" id="highscript-otf" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0xcbf0c8a0c61f8018f9ad186e4aaa300faad892c6cbfa398841814f02c3bdea30/content"/>
+    <link rel="preload" as="font" type="font/woff2" id="lowscript-woff" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x665ba2d452904e03e1943e0800af42468e107b614ee4ec59d377a66ffbe5ea5d/content"/>
+    <link rel="preload" as="font" type="font/otf" id="lowscript-otf" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x50c42bd4696c50868b147396a707ede771abb4bd10acbfdd1af00ef186e6187f/content"/>
+
+    <ClientRouter />
+
+    <!-- HTML Meta Tags -->
+    <title>{ogTitle}</title>
+    <meta name="description" content={ogDescription} />
+
+    <!-- Facebook Meta Tags -->
+    <meta property="og:url" content={ogHref} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={ogTitle} />
+    <meta property="og:description" content={ogDescription} />
+    <meta property="og:image" content={ogImage} />
+    <!-- Twitter Meta Tags -->
+    <meta name="twitter:site" content="@wgw_eth" />
+    <meta name="twitter:creator" content="@wgw_eth" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta property="twitter:domain" content={url.origin} />
+    <meta property="twitter:url" content={ogHref} />
+    <meta name="twitter:title" content={ogTitle} />
+    <meta name="twitter:description" content={ogDescription} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <style is:global>
+      /* define:vars={{ contentUri: `url("${meta.content_uri}")` }} */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    @font-face {
+        font-family: "High Blockscript";
+        src:
+            url("/fonts/high-blockscript.woff2") format("woff2"),
+            url("/fonts/high-blockscript.otf") format("opentype");
+        font-display: swap;
+    }
+
+    @font-face {
+        font-family: "Low Blockscript";
+        src:
+            url("/fonts/low-blockscript.woff2") format("woff2"),
+            url("/fonts/low-blockscript.otf") format("opentype");
+        font-display: swap;
+    }
+
+    .highscript {
+        font-family: "High Blockscript";
+    }
+    .lowscript {
+        font-family: "Low Blockscript";
+    }
+
+    .asciiart {
+        background-clip: text;
+        background-position: center center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        -webkit-text-fill-color: transparent;
+        text-fill-color: transparent;
+        word-break: break-all;
+        color: #fff;
+        font-size: 12px;
+        text-align: justify;
+    }
+
+    .art {
+        width: 750px;
+        height: 750px;
+    }
+    </style>
+  </head>
+  <body class="mx-auto flex max-w-[750px] flex-col items-center justify-center bg-black text-black">
+    <div class="my-5 flex w-full items-center justify-between">
+      <a href={`/${prev}${url.search}`} class="bg-gray-200 p-2">
+        ← #{prev.toLocaleString()}
+      </a>
+      <form method="POST" action={`/${id}`}>
+        <input
+          autofocus
+          type="text"
+          name="eid"
+          id="eid"
+          required
+          min="0"
+          placeholder="Ethscription ID"
+          class="-mr-1 w-40 min-w-0 border bg-gray-900/70 px-2 py-1.5 text-gray-200 outline-none"
+        />
+        <button type="submit" class="border bg-gray-200 px-2 py-1.5"> Go </button>
+      </form>
+      <div
+        class={`cursor-pointer bg-gray-200 p-2 ` + (isNotImage ? 'opacity-50' : '')}
+        id="download-btn"
+      >
+        Download
+      </div>
+      {blockscript || blockscript !== 'none'
+        ? <a class="bg-gray-200 p-2" href={`${url.pathname}?blockscript=${blockscript === 'highscript' ? 'lowscript' :
+       blockscript === 'lowscript' ? 'none' : 'highscript'}`}>{
+          blockscript === 'highscript' ? 'Low Blockscript' : blockscript === 'lowscript' ? 'No Blockscript' : 'High Blockscript'
+        }</a>
+        : <a class="bg-gray-200 p-2" href={`${url.pathname}?blockscript=highscript`}>High Blockscript</a>
+      }
+      <a href={`/${next}${url.search}`} class="bg-gray-200 p-2">
+        #{next.toLocaleString()} →
+      </a>
+    </div>
+    <div
+      class="m-0 mb-8 flex items-center justify-center overflow-hidden border border-gray-100 p-2"
+    >
+      {
+        isNotImage && (
+          <div class="mt-3.5 flex w-[750px] flex-col items-center justify-center text-gray-100">
+            <h2 class="text-3xl font-bold">Not an image, try another</h2>
+            <div class="my-4 overflow-x-hidden">
+              {Object.entries(res).map(([key, value]) => {
+                if (res.content_type === 'text/html') {
+                  return null;
+                }
+
+                return (
+                  <p>
+                    <strong>{key}:</strong>{' '}
+                    {typeof value === 'number' ? value.toLocaleString() : String(value)}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+        )
+      }
+      {
+        !isNotImage && (
+          <div
+            class={`asciiart art ${blockscript}`}
+            data-eid={res.transaction_hash}
+            style={`background-image: url("${res.content_uri}")`}
+          >
+              {backgroundAsciiContent}
+          </div>
+        )
+      }
+    </div>
+    <!-- <Asciify meta={meta} prev={prev} next={next} client:load /> -->
+    <script type="module" is:inline define:vars={{ isNotImage: isNotImage }}>
+      import domToImageMore from 'https://esm.sh/dom-to-image-more@3.2.0';
+
+      const downloadButton = document.querySelector('#download-btn');
+
+      // const mapping = {
+      //   jpeg: domToImageMore.toJpeg,
+      //   jpg: domToImageMore.toJpeg,
+      //   png: domToImageMore.toPng,
+      // };
+
+      function base64ToUint8Array(base64String) {
+        // base64 sanitizing
+        const base64 = base64urlToBase64(base64String);
+
+        // base64 decoding
+        const rawData = atob(base64);
+
+        // Converting raw data to Uint8Array
+        return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
+      }
+
+      function base64urlToBase64(base64UrlString) {
+        // Replace non-url compatible chars with base64 standard chars
+        const base64 = base64UrlString.replace(/-/g, '+').replace(/_/g, '/');
+
+        // Pad out with standard base64 required padding characters if missing
+        const missingPadding = '='.repeat((4 - (base64.length % 4)) % 4);
+
+        return base64 + missingPadding;
+      }
+
+      function base64toFile(b64, filename) {
+        const url = new URL(window.location.href);
+        const imageType = dataURL.slice(5, dataURL.indexOf(';base64'));
+        const imageDataBase64 = dataURL.slice(dataURL.indexOf(',') + 1);
+
+        const imageUint8 = base64ToUint8Array(imageDataBase64);
+        const imageName = `ethscription-` + url.pathname.replace(/^\//i, '');
+        const file = new File([imageUint8], filename || imageName, { type: imageType });
+
+        return file;
+      }
+
+      downloadButton.addEventListener('click', async () => {
+        if (isNotImage) return;
+
+        const art = document.querySelector('.art');
+
+        const dataURL = await domToImageMore.toPng(art, {
+          width: 750,
+          height: 750,
+          bgcolor: '#000',
+          style: {
+            padding: 0,
+            margin: 0,
+          },
+        });
+
+        // const canvas = await domToImageMore.toCanvas(art, {
+        //   width: 750,
+        //   height: 750,
+        //   bgcolor: "#000",
+        //   style: {
+        //     padding: 0,
+        //     margin: 0,
+        //   },
+        // });
+
+        // document.body.appendChild(canvas);
+
+        const link = document.createElement("a");
+        link.href = dataURL;
+        link.target = "_blank";
+        link.download = art.dataset.eid + ".png";
+        link.click();
+      });
+    </script>
+  </body>
+</html>
