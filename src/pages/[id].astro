@@ -41,7 +41,7 @@ if (meta.error) {
 }
 
 const res = meta.result;
-const isNotImage = res.media_type !== 'image' || res.content_type === 'image/svg+xml';
+const isNotImage = res.media_type !== 'image'
 
 const num = Number(res.ethscription_number);
 
@@ -177,13 +177,16 @@ const blockscript = url.searchParams.get('blockscript') || null;
     .art {
         width: 100%;
         max-width: 750px;
-        aspect-ratio: 1;
-        max-height: 750px;
+        min-height: 750px;
+        max-height: 900px;
+        height: auto;
     }
 
     @media (max-width: 640px) {
         .art {
             max-width: calc(100vw - 16px);
+            min-height: 350px;
+            max-height: calc(100vw - 16px);
         }
     }
     </style>
@@ -200,7 +203,7 @@ const blockscript = url.searchParams.get('blockscript') || null;
         id="eid"
         required
         min="0"
-        placeholder="ID"
+        placeholder="Search by Ethscription ID or number"
         class="flex-1 border bg-gray-900/70 px-2 py-1.5 text-sm text-gray-200 outline-none"
       />
       <button type="submit" class="border bg-gray-200 px-3 py-1.5 text-sm whitespace-nowrap">Go</button>
@@ -235,7 +238,7 @@ const blockscript = url.searchParams.get('blockscript') || null;
     </div>
     <!-- Art: desktop order-3, mobile order-1 (appears before search/navbar on mobile) -->
     <div
-      class="w-full max-w-[750px] flex items-center justify-center overflow-hidden border border-gray-100 p-2 order-1 md:order-3"
+      class="w-full mb-10 flex items-center justify-center overflow-hidden border border-gray-100 p-2 order-1 md:order-3"
     >
 
 
@@ -265,6 +268,7 @@ const blockscript = url.searchParams.get('blockscript') || null;
           <div
             class={`asciiart art ${blockscript}`}
             data-eid={res.transaction_hash}
+            data-enumber={res.ethscription_number}
             style={`background-image: url("${res.content_uri}")`}
           >
               {backgroundAsciiContent}
@@ -272,8 +276,55 @@ const blockscript = url.searchParams.get('blockscript') || null;
         )
       }
     </div>
+    <script type="module">
+        import domToImageMore from "https://esm.sh/dom-to-image-more@3.2.0";
+
+        function initDownloadButton() {
+            const downloadButton = document.querySelector('#download-btn');
+            if (!downloadButton) return;
+
+            // Remove old listeners by cloning the element
+            const newDownloadButton = downloadButton.cloneNode(true);
+            downloadButton.parentNode.replaceChild(newDownloadButton, downloadButton);
+
+            newDownloadButton.addEventListener("click", async (e) => {
+                const container = document.querySelector('.asciiart');
+                if (container) {
+                    console.log("Downloading...");
+                    // Measure actual element dimensions
+                    const width = container.offsetWidth;
+                    const height = container.offsetHeight;
+                    console.log(`Measured dimensions: ${width}x${height}`);
+
+                    const res = await domToImageMore.toPng(container, {
+                        width: 750,
+                        height: height,
+                        bgcolor: '#000',
+                        filename: `${container.dataset.enumber}-${container.dataset.eid}.png`,
+                        format: "png",
+                    });
+
+                    const link = document.createElement("a");
+                    link.href = res;
+                    link.target = "_blank";
+                    link.download = `${container.dataset.enumber}-${container.dataset.eid}.png`;
+                    link.click();
+                    console.log("Download complete");
+                } else {
+                    console.log("No container found");
+                }
+            });
+        }
+
+        // Initialize on page load
+        initDownloadButton();
+
+        // Reinitialize after View Transitions
+        document.addEventListener('astro:after-swap', initDownloadButton);
+    </script>
+
     <!-- <Asciify meta={meta} prev={prev} next={next} client:load /> -->
-    <script type="module" is:inline define:vars={{ isNotImage: isNotImage }}>
+    <!-- <script type="module" is:inline define:vars={{ isNotImage: isNotImage }}>
       import domToImageMore from 'https://esm.sh/dom-to-image-more@3.2.0';
 
       const downloadButton = document.querySelector('#download-btn');
@@ -350,6 +401,6 @@ const blockscript = url.searchParams.get('blockscript') || null;
         link.download = art.dataset.eid + ".png";
         link.click();
       });
-    </script>
+    </script> -->
   </body>
 </html>
