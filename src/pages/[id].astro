@@ -210,8 +210,11 @@ const blockscript = url.searchParams.get('blockscript') || null;
     </form>
     <!-- Navbar: desktop order-2, mobile order-3 -->
     <div class="flex w-full items-center justify-between gap-2 order-3 md:order-2">
-      <a href={`/${prev}${url.search}`} class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0">
-        ← #{prev.toLocaleString()}
+      <a href={`/${prev}${url.search}`} class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        #{prev.toLocaleString()}
       </a>
       <div
         class={`cursor-pointer bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 ` + (isNotImage ? 'opacity-50' : '')}
@@ -232,8 +235,11 @@ const blockscript = url.searchParams.get('blockscript') || null;
         </svg>
         <span>GitHub</span>
       </a>
-      <a href={`/${next}${url.search}`} class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0">
-        #{next.toLocaleString()} →
+      <a href={`/${next}${url.search}`} class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1">
+        #{next.toLocaleString()}
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
       </a>
     </div>
     <!-- Art: desktop order-3, mobile order-1 (appears before search/navbar on mobile) -->
