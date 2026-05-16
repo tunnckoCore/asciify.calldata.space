@@ -35,7 +35,7 @@ const memoryCache = new Map<string, CacheValue>();
 
 export function getCacheHeaders() {
   return {
-    "Cache-Control": `public, max-age=3600, must-revalidate`,
+    "Cache-Control": `public, max-age=120, stale-while-revalidate=3600, must-revalidate`,
     "CDN-Cache-Control": `public, max-age=${CACHE_TTL_SECONDS}, immutable`,
     "Netlify-CDN-Cache-Control": `public, durable, max-age=${CACHE_TTL_SECONDS}, immutable`,
   };

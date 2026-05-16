@@ -26,14 +26,15 @@ export function getFont(url: URL): "lowscript" | "highscript" {
     return fontStr as "highscript";
   }
 
-  return fontStr;
+  return "" as "lowscript" | "highscript";
 }
 
+// NOTE: DO NOT REMOVE. It's not used because it bugs paddings
 export function getFontSize(url: URL) {
   return (
     url.searchParams.get("fontSize") ||
     url.searchParams.get("font_size") ||
-    "15px"
+    "16px"
   );
 }
 

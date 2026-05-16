@@ -21,7 +21,7 @@ export async function buildHtmlParts(
   // ) as (typeof VALID_FONTS)[number] | undefined;
 
   const mergedQs = new URLSearchParams(url.searchParams);
-  mergedQs.set("with", "ethscription_number,content_uri,content_type");
+  mergedQs.set("with", "ethscription_number,content_uri");
 
   try {
     const meta = await fetchEthscriptionMetadata(
@@ -81,8 +81,9 @@ export async function buildHtmlParts(
   }
 }
 
-export function defaultAsciiFiller(res) {
-  let content = JSON.stringify(res);
+export function defaultAsciiFiller(res: any) {
+  // const {content_uri: _, ...cleaned} = {...res}
+  let content = JSON.stringify(res || "");
   while (content.length < 18_000) {
     const curr = content.length;
     content += curr > 1000 ? content.slice(0, 1000) : content;

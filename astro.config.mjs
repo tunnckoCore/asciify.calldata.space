@@ -4,7 +4,7 @@ import tailwind from "@astrojs/tailwind";
 // import tunnel from "astro-tunnel";
 import { defineConfig, memoryCache } from "astro/config";
 
-const CACHE_TTL = 5; // 1 year
+const CACHE_TTL = 3600; // 1 hour
 
 // https://astro.build/config
 export default defineConfig({
