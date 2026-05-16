@@ -19,12 +19,38 @@ const url = new URL(Astro.request.url);
 
 // const mode = searchParams.get("mode") || "next";
 const { id } = Astro.params;
+const current = Math.max(Number(id) || 498580, 0);
+const referer = Astro.request.headers.get("referer");
+let refererId = NaN;
+
+if (referer) {
+    try {
+        refererId = Number(new URL(referer).pathname.slice(1));
+    } catch {
+        refererId = NaN;
+    }
+}
+
+const direction =
+    Number.isFinite(refererId) && current < refererId ? "backward" : "forward";
+
+Astro.response.headers.set("x-asciify-art-curr", String(current));
+Astro.response.headers.set(
+    "x-asciify-art-ref-id",
+    String(Number.isNaN(refererId) ? 498580 : refererId),
+);
+Astro.response.headers.set("x-asciify-art-dirr", direction);
 
 console.log("id page SSR:", { font: url.searchParams.get("font") });
 
 const htmlParts = await buildHtmlParts(id, url);
 if (!htmlParts.ok) {
-    // console.error("ERRRRR::::", htmlParts.error);
+    if (htmlParts.status === 404) {
+        const skipTo =
+            direction === "backward" ? Math.max(current - 1, 0) : current + 1;
+
+        return Astro.redirect(`/${skipTo}`);
+    }
     return Astro.redirect("/498580");
 }
 
@@ -34,6 +60,9 @@ const num = Number(res.ethscription_number);
 
 const prev = num - 1 < 0 ? 0 : num - 1;
 const next = num + 1;
+
+Astro.response.headers.set("x-asciify-art-prev", String(prev));
+Astro.response.headers.set("x-asciify-art-next", String(next));
 
 // if (!meta.mimetype.startsWith("image/") || meta.mimetype === "image/svg+xml") {
 //   const newLoc = mode === "next" ? next : prev;
@@ -130,15 +159,12 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
         <meta name="twitter:description" content={ogDescription} />
         <meta name="twitter:image" content={ogImage} />
 
-        <style is:global set:html={getAsciiifyStyles(null, baseUrl, url)}
-        ></style>
+        <style set:html={getAsciiifyStyles(null, baseUrl, url)}></style>
         <style
-            is:global
             id="style-highscript"
             set:html={buildFontFace("highscript", baseUrl)}
         ></style>
         <style
-            is:global
             id="style-lowscript"
             set:html={buildFontFace("lowscript", baseUrl)}
         ></style>
@@ -181,8 +207,8 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
                 class="flex w-full md:w-auto items-center gap-2 justify-between"
             >
                 <a
-                    class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0"
-                    href={blockscriptHref}
+                    class={`bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 ${res.isNotImage ? "opacity-50  cursor-not-allowed" : ""}`}
+                    href={res.isNotImage ? null : blockscriptHref}
                 >
                     {
                         blockscript === "highscript"
@@ -212,7 +238,7 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
                 </a>
                 <div
                     class={`cursor-pointer bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 ` +
-                        (res.isNotImage ? "opacity-50" : "")}
+                        (res.isNotImage ? "opacity-50 cursor-not-allowed" : "")}
                     id="download-btn"
                 >
                     Download
@@ -270,23 +296,8 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
                         <h2 class="text-xl sm:text-3xl font-bold text-center">
                             Not an image, try another
                         </h2>
-                        <div class="my-4 overflow-x-auto text-xs sm:text-base max-w-full">
-                            {Object.entries(res)
-                                .slice(0, 10)
-                                .map(([key, value]) => {
-                                    if (res.content_type === "text/html") {
-                                        return null;
-                                    }
-
-                                    return (
-                                        <p class="break-words">
-                                            <strong>{key}:</strong>{" "}
-                                            {typeof value === "number"
-                                                ? value.toLocaleString()
-                                                : String(value)}
-                                        </p>
-                                    );
-                                })}
+                        <div class="my-4 overflow-hidden text-xs sm:text-base max-w-full">
+                            {JSON.stringify({ foo: "bar" })}
                         </div>
                     </div>
                 )

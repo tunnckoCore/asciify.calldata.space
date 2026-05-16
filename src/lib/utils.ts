@@ -30,9 +30,8 @@ export async function buildHtmlParts(
       mergedQs.toString().replaceAll("%2C", ","),
     );
     const res = meta.contentBody.result;
-    const isNotImage = Boolean(res?.media_type !== "image");
 
-    if (!res || isNotImage) {
+    if (!res) {
       return {
         ok: false,
         error: "not found",
@@ -40,6 +39,7 @@ export async function buildHtmlParts(
       };
     }
 
+    const isNotImage = Boolean(res?.media_type !== "image");
     const content = defaultAsciiFillerFn?.(res) || JSON.stringify(res);
     const metadata: AsciiartMetadata = {
       transaction_hash: res.transaction_hash,
