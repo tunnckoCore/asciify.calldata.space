@@ -20,13 +20,12 @@ const url = new URL(Astro.request.url);
 // const mode = searchParams.get("mode") || "next";
 const { id } = Astro.params;
 
-
-let meta = await fetch(url.origin + '/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
+let meta = await fetch(`${url.origin}/ethscriptions/${id}?with=ethscription_number,content_uri`).then((x) =>
   x.json(),
 );
 
 if (meta.media_type === 'image' && meta.image_removed_by_request_of_rights_holder) {
-  const resp = await fetch(url.origin + '/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
+  const resp = await fetch(`${url.origin}/ethscriptions/${id}?with=ethscription_number,content_uri`).then((x) =>
     x.json(),
   );
   meta = resp.data;
@@ -127,7 +126,7 @@ void asciiifyStyles;
     <meta name="twitter:description" content={ogDescription} />
     <meta name="twitter:image" content={ogImage} />
 
-    <style is:global>{asciiifyStyles}</style>
+    <style is:global set:html={getAsciiifyStyles()}></style>
   </head>
   <body class="pb-10 px-4 mx-auto flex w-full max-w-[750px] flex-col gap-2 items-center justify-center bg-black">
       <h1 class="text-4xl font-extrabold text-gray-200 text-shadow mt-4 mb-2"><a href="/">Asciify.Art</a></h1>
