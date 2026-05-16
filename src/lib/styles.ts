@@ -43,7 +43,14 @@ export function buildFontFace(font: FontName, baseUrl?: string) {
   const family = font === "highscript" ? "High Blockscript" : "Low Blockscript";
   return `@font-face{font-family:"${family}";src:url("${prefix}/ethscriptions/${woff2}/content")format("woff2"),url("${prefix}/ethscriptions/${otf}/content")format("opentype");font-display:swap}`;
 }
-
+function safeCssColor(input: string | null | undefined) {
+  const value = (input ?? "").trim();
+  // conservative allowlist: hex, rgb/rgba, hsl/hsla, or simple color keywords
+  if (/^#[0-9a-fA-F]{3,8}$/.test(value)) return value;
+  if (/^(rgb|hsl)a?\([\d\s.,%+-]+\)$/.test(value)) return value;
+  if (/^[a-zA-Z]+$/.test(value)) return value;
+  return "black";
+}
 export function getAsciiifyStyles(
   font: FontName | null,
   baseUrl?: string,
@@ -57,11 +64,11 @@ export function getAsciiifyStyles(
       //     buildFontFace('lowscript', baseUrl)
       //     ].join("/**/")
       "";
-  const bgColor =
+  const bgColor = safeCssColor(
     url?.searchParams?.get("bg") ||
     url?.searchParams?.get("bg_color") ||
-    url?.searchParams?.get("bgColor") ||
-    "black";
+    url?.searchParams?.get("bgColor")
+  );
 
   return `*{box-sizing:border-box;margin:0;padding:0}body{background-color:${bgColor};}${fontFaces}.highscript{font-family:"High Blockscript"}.lowscript{font-family:"Low Blockscript"}.asciiart{background-clip:text;background-position:center center;background-repeat:no-repeat;background-size:cover;-webkit-text-fill-color:transparent;text-fill-color:transparent;word-break:break-all;color:#fff;font-size:clamp(10px,2vw,12px);text-align:justify}.art{padding:0.5rem;width:100%;max-width:750px;min-height:750px;max-height:750px}@media(max-width:640px){.art{max-width:calc(100vw - 16px);min-height:350px;max-height:calc(100vw - 16px)}}`;
 }

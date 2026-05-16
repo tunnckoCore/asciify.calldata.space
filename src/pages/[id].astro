@@ -24,7 +24,7 @@ console.log("id page SSR:", { font: url.searchParams.get("font") });
 
 const htmlParts = await buildHtmlParts(id, url);
 if (!htmlParts.ok) {
-    console.error("ERRRRR::::", htmlParts.error);
+    // console.error("ERRRRR::::", htmlParts.error);
     return Astro.redirect("/498580");
 }
 
@@ -70,6 +70,15 @@ const ogImage =
 
 const blockscript = url.searchParams.get("font") || null;
 const baseUrl = url.searchParams.get("base_url") || null;
+const nextBlockscript =
+    blockscript === "highscript"
+        ? "lowscript"
+        : blockscript === "lowscript"
+          ? "none"
+          : "highscript";
+const blockscriptSearchParams = new URLSearchParams(url.searchParams);
+blockscriptSearchParams.set("font", nextBlockscript);
+const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
 
 // === Sepolia
 // highscript woff2 gzip = 0x2f8397abd2d4244c3c2196fcabae519ef625ac292eeeccbbf632b01252366702
@@ -171,33 +180,18 @@ const baseUrl = url.searchParams.get("base_url") || null;
             <div
                 class="flex w-full md:w-auto items-center gap-2 justify-between"
             >
-                {
-                    blockscript || blockscript !== "none" ? (
-                        <a
-                            class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0"
-                            href={`${url.pathname}?font=${
-                                blockscript === "highscript"
-                                    ? "lowscript"
-                                    : blockscript === "lowscript"
-                                      ? "none"
-                                      : "highscript"
-                            }`}
-                        >
-                            {blockscript === "highscript"
-                                ? "Low Blockscript"
-                                : blockscript === "lowscript"
-                                  ? "No Blockscript"
-                                  : "High Blockscript"}
-                        </a>
-                    ) : (
-                        <a
-                            class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0"
-                            href={`${url.pathname}?font=highscript`}
-                        >
-                            High Blockscript
-                        </a>
-                    )
-                }
+                <a
+                    class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0"
+                    href={blockscriptHref}
+                >
+                    {
+                        blockscript === "highscript"
+                            ? "Low Blockscript"
+                            : blockscript === "lowscript"
+                              ? "No Blockscript"
+                              : "High Blockscript"
+                    }
+                </a>
                 <a
                     href="https://github.com/tunnckoCore/asciify.calldata.space"
                     target="_blank"

@@ -63,7 +63,7 @@ export function getCacheKey(urlstr: string, tag = "eths") {
 export function getInMemoryCachedValue<T>(key: string): T | undefined {
   const cached = memoryCache.get(getCacheKey(key));
   if (!cached || cached.expiresAt <= Date.now()) {
-    if (cached) memoryCache.delete(key);
+    if (cached) memoryCache.delete(getCacheKey(key));
     return undefined;
   }
 
