@@ -6,7 +6,7 @@ import { getAsciiifyStyles, getFontLinks, buildAsciiartDiv, type AsciiartMetadat
 
 const VALID_FONTS = ['highscript', 'lowscript'] as const;
 
-export const GET: APIRoute = async ({ params, url }) => {
+export const GET: APIRoute = async ({ params, url, cache }) => {
   const { id } = params;
 
   if (!id) {
@@ -17,15 +17,17 @@ export const GET: APIRoute = async ({ params, url }) => {
   const font = (VALID_FONTS.includes(fontParam as typeof VALID_FONTS[number]) ? fontParam : undefined) as typeof VALID_FONTS[number] | undefined;
   const baseUrl = url.searchParams.get('base_url') ?? undefined;
 
+  const queryString = url.searchParams.toString();
+
   try {
-    const meta = await fetchEthscriptionMetadata(id);
+    const meta = await fetchEthscriptionMetadata(id, queryString);
     const res = meta.result;
 
     if (!res || res.media_type !== 'image') {
       return new Response('Not Found', { status: 404 });
     }
 
-    const num = Number(res.ethscription_number ?? '498580');
+    const num = Number(res.ethscription_number ?? id.replace(/,/g, ''));
 
     let backgroundAsciiContent = JSON.stringify(res);
     while (backgroundAsciiContent.length < 18_000) {
@@ -46,6 +48,8 @@ export const GET: APIRoute = async ({ params, url }) => {
     const asciiartDiv = buildAsciiartDiv(metadata);
 
     const html = `<html><head><title>Asciify.Art - Ethscription #${num.toLocaleString()}</title><style>${css}</style>${fontPreload}</head><body>${asciiartDiv}</body></html>`;
+
+    cache.set({ maxAge: 31536000 });
 
     return new Response(html, {
       status: 200,

@@ -3,7 +3,7 @@ import { fetchEthscriptionContent } from '../../../lib/fetch';
 import { EthscriptionFetchError } from '../../../types/ethscription';
 import { getCacheHeaders } from '../../../lib/cache';
 
-export const GET: APIRoute = async ({ params }) => {
+export const GET: APIRoute = async ({ params, cache }) => {
   const { id } = params;
 
   if (!id) {
@@ -15,6 +15,8 @@ export const GET: APIRoute = async ({ params }) => {
 
   try {
     const content = await fetchEthscriptionContent(id);
+
+    cache.set({ maxAge: 31536000 });
 
     return new Response(content.body, {
       status: 200,
