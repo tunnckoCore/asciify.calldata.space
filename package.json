@@ -27,7 +27,7 @@
     "typescript": "^5.9.3"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
+    "@biomejs/biome": "2.2.x",
     "@types/node": "^24.12.4",
     "biome-config-xaxa": "^0.1.9",
     "prettier": "^3.8.3",

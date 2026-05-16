@@ -3,11 +3,17 @@ export type EthscriptionId = string;
 export type EthscriptionPrimitive = string | number | boolean | null;
 
 export type EthscriptionRecord = {
-  media_type?: string;
+  media_type: string;
   image_removed_by_request_of_rights_holder?: boolean;
-  ethscription_number?: string | number;
-  content_uri?: string;
-  [key: string]: EthscriptionPrimitive | EthscriptionPrimitive[] | EthscriptionRecord | undefined;
+  transaction_hash: string;
+  ethscription_number: string;
+  content_uri: string;
+  content_type: string;
+  [key: string]:
+    | EthscriptionPrimitive
+    | EthscriptionPrimitive[]
+    | EthscriptionRecord
+    | undefined;
 };
 
 export type EthscriptionMetadataResponse = {
@@ -19,8 +25,10 @@ export type EthscriptionMetadataResponse = {
 
 export type EthscriptionContentResponse = {
   id: EthscriptionId;
-  body: ArrayBuffer;
+  headers: Headers;
+  contentBody: ArrayBuffer;
   contentType: string | null;
+  contentLength: string | null;
 };
 
 export class EthscriptionFetchError extends Error {
@@ -29,7 +37,7 @@ export class EthscriptionFetchError extends Error {
 
   constructor(message: string, status: number, url: string, cause?: unknown) {
     super(message, cause ? { cause } : undefined);
-    this.name = 'EthscriptionFetchError';
+    this.name = "EthscriptionFetchError";
     this.status = status;
     this.url = url;
   }

@@ -1,43 +1,18 @@
-import type { APIRoute } from 'astro';
-import { fetchEthscriptionContent } from '../../../lib/fetch';
-import { EthscriptionFetchError } from '../../../types/ethscription';
-import { getCacheHeaders } from '../../../lib/cache';
+import type { APIRoute } from "astro";
+import { getCacheHeaders } from "@/lib/cache";
+import { fetchEthscriptionContent } from "@/lib/fetch";
 
-export const GET: APIRoute = async ({ params, cache }) => {
+// cche proxy of mainnet.api.calldata.space/ethscriptions/:id/content
+export const GET: APIRoute = async ({ params }) => {
   const { id } = params;
+  const { contentBody, contentType } = await fetchEthscriptionContent(id);
 
-  if (!id) {
-    return new Response(JSON.stringify({ error: 'Missing ethscription ID' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-
-  try {
-    const content = await fetchEthscriptionContent(id);
-
-    cache.set({ maxAge: 31536000 });
-
-    return new Response(content.body, {
-      status: 200,
-      headers: {
-        'Content-Type': content.contentType ?? 'application/octet-stream',
-        ...getCacheHeaders(),
-      },
-    });
-  } catch (error) {
-    if (error instanceof EthscriptionFetchError) {
-      if (error.status === 404) {
-        return new Response(JSON.stringify({ error: `Ethscription ${id} not found` }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    return new Response(JSON.stringify({ error: 'Failed to fetch ethscription content' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
+  return new Response(contentBody, {
+    headers: {
+      ...getCacheHeaders(),
+      "x-ethscription-id": id,
+      "content-type": contentType,
+      "content-length": String(contentBody.byteLength),
+    },
+  });
 };
