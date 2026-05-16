@@ -34,7 +34,7 @@ export function getFontSize(url: URL) {
   return (
     url.searchParams.get("fontSize") ||
     url.searchParams.get("font_size") ||
-    "16px"
+    ""
   );
 }
 

@@ -339,7 +339,10 @@ const iframeSourceUrl = url
                 );
 
                 newDownloadButton.addEventListener("click", async () => {
-                    const container = document.querySelector(".asciiart");
+                    // const container = document.querySelector(".asciiart");
+                    const iframe = document.querySelector("iframe");
+                    const container =
+                        iframe?.contentDocument?.querySelector(".asciiart");
                     if (container) {
                         // Measure actual element dimensions
                         const height = container.offsetHeight;

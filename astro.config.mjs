@@ -12,10 +12,10 @@ export default defineConfig({
   adapter: netlify({ cacheOnDemandPages: true }),
   integrations: [tailwind(), react()],
   experimental: {
-    cache: { provider: memoryCache() },
-    routeRules: {
-      "/ethscriptions/*": { maxAge: CACHE_TTL, tags: ["ethscriptions"] },
-      "/*": { maxAge: CACHE_TTL, tags: ["pages"] },
-    },
+    // cache: { provider: memoryCache() },
+    // routeRules: {
+    //   "/ethscriptions/*": { maxAge: CACHE_TTL, tags: ["ethscriptions"] },
+    //   "/*": { maxAge: CACHE_TTL, tags: ["pages"] },
+    // },
   },
 });

@@ -75,7 +75,7 @@ export async function buildHtmlParts(
 
     return {
       ok: false,
-      error: `internal server error: ${error.stack}`,
+      error: `internal server error: ${error.message.slice(0, 150)}...`,
       status: 500,
     };
   }
