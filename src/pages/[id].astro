@@ -14,10 +14,6 @@ if (Astro.request.method === 'POST') {
 }
 
 
-const numberFormat = (num: any) => {
-  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-};
-
 const url = new URL(Astro.request.url);
 
 // const mode = searchParams.get("mode") || "next";
@@ -189,7 +185,6 @@ const blockscript = url.searchParams.get('blockscript') || null;
         }
     }
     </style>
-</parameter>
   </head>
   <body class="pb-10 px-4 mx-auto flex w-full max-w-[750px] flex-col gap-2 items-center justify-center bg-black">
       <h1 class="text-4xl font-extrabold text-gray-200 text-shadow mt-4 mb-2"><a href="/">Asciify.Art</a></h1>
@@ -286,7 +281,7 @@ const blockscript = url.searchParams.get('blockscript') || null;
         )
       }
     </div>
-    <script type="module">
+    <script type="module" is:inline>
         import domToImageMore from "https://esm.sh/dom-to-image-more@3.2.0";
 
         function initDownloadButton() {
@@ -297,7 +292,7 @@ const blockscript = url.searchParams.get('blockscript') || null;
             const newDownloadButton = downloadButton.cloneNode(true);
             downloadButton.parentNode.replaceChild(newDownloadButton, downloadButton);
 
-            newDownloadButton.addEventListener("click", async (e) => {
+            newDownloadButton.addEventListener("click", async () => {
                 const container = document.querySelector('.asciiart');
                 if (container) {
                     console.log("Downloading...");
