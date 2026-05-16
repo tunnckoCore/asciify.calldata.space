@@ -3,7 +3,7 @@ import {
   type AsciiartMetadata,
   buildAsciiartDiv,
   getAsciiifyStyles,
-  getFontLinks,
+  getHtmlFontPreload,
 } from "@/lib/styles";
 import { EthscriptionFetchError } from "@/types/ethscription";
 
@@ -12,15 +12,14 @@ export async function buildHtmlParts(
   url: URL,
   defaultAsciiFillerFn = defaultAsciiFiller,
 ) {
-  const VALID_FONTS = ["highscript", "lowscript"] as const;
-  const fontParam = url.searchParams.get("font");
-  const font = (
-    VALID_FONTS.includes(fontParam as (typeof VALID_FONTS)[number])
-      ? fontParam
-      : undefined
-  ) as (typeof VALID_FONTS)[number] | undefined;
+  // const VALID_FONTS = ["highscript", "lowscript"] as const;
+  // const fontParam = url.searchParams.get("font");
+  // const font = (
+  //   VALID_FONTS.includes(fontParam as (typeof VALID_FONTS)[number])
+  //     ? fontParam
+  //     : undefined
+  // ) as (typeof VALID_FONTS)[number] | undefined;
 
-  const baseUrl = url.searchParams.get("base_url") ?? undefined;
   const mergedQs = new URLSearchParams(url.searchParams);
   mergedQs.set("with", "ethscription_number,content_uri,content_type");
 
@@ -50,10 +49,9 @@ export async function buildHtmlParts(
       asciiContent: content,
     };
 
-    const css = getAsciiifyStyles(font, baseUrl, url);
-    const fontPreload = getFontLinks(baseUrl, font);
-
-    const asciiartDiv = buildAsciiartDiv(metadata, font);
+    const css = getAsciiifyStyles(url);
+    const fontPreload = getHtmlFontPreload(url);
+    const asciiartDiv = buildAsciiartDiv(url, metadata);
 
     return {
       ok: true,
@@ -77,7 +75,7 @@ export async function buildHtmlParts(
 
     return {
       ok: false,
-      error: `internal server error: ${error.message.slice(0, 100)}`,
+      error: `internal server error: ${error.stack}`,
       status: 500,
     };
   }

@@ -1,3 +1,14 @@
+import {
+  getArtBoxPadding,
+  getAspectRatio,
+  getBaseUrl,
+  getBgColor,
+  getFont,
+  getFontSize,
+  getHeight,
+  getWidth,
+} from "@/lib/url_getters";
+
 const FONT_HASHES = {
   highscript: {
     woff2: "0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a",
@@ -8,8 +19,6 @@ const FONT_HASHES = {
     otf: "0x665ba2d452904e03e1943e0800af42468e107b614ee4ec59d377a66ffbe5ea5d",
   },
 } as const;
-
-type FontName = keyof typeof FONT_HASHES;
 
 export type AsciiartMetadata = {
   transaction_hash: string | number;
@@ -29,7 +38,7 @@ function escapeHtml(value: string) {
     .replaceAll("'", "&#39;");
 }
 
-function normalizeBaseUrl(baseUrl: string) {
+export function normalizeBaseUrl(baseUrl: string) {
   let url = baseUrl.replace(/\/+$/, "");
   if (url && !url.match(/^https?:\/\//)) {
     url = `https://${url}`;
@@ -37,13 +46,19 @@ function normalizeBaseUrl(baseUrl: string) {
   return url;
 }
 
-export function buildFontFace(font: FontName, baseUrl?: string) {
-  const prefix = baseUrl ? normalizeBaseUrl(baseUrl) : "";
+export function buildCssFontFace(url: URL) {
+  const font = getFont(url);
+  if (!font) {
+    return "";
+  }
+
+  const baseUrl = getBaseUrl(url);
   const { woff2, otf } = FONT_HASHES[font];
   const family = font === "highscript" ? "High Blockscript" : "Low Blockscript";
-  return `@font-face{font-family:"${family}";src:url("${prefix}/ethscriptions/${woff2}/content")format("woff2"),url("${prefix}/ethscriptions/${otf}/content")format("opentype");font-display:swap}`;
+  return `@font-face{font-family:"${family}";src:url("${baseUrl}/ethscriptions/${woff2}/content")format("woff2"),url("${baseUrl}/ethscriptions/${otf}/content")format("opentype");font-display:swap}`;
 }
-function safeCssColor(input: string | null | undefined) {
+
+export function safeCssColor(input: string | null | undefined) {
   const value = (input ?? "").trim();
   // conservative allowlist: hex, rgb/rgba, hsl/hsla, or simple color keywords
   if (/^#[0-9a-fA-F]{3,8}$/.test(value)) return value;
@@ -51,40 +66,36 @@ function safeCssColor(input: string | null | undefined) {
   if (/^[a-zA-Z]+$/.test(value)) return value;
   return "black";
 }
-export function getAsciiifyStyles(
-  font: FontName | null,
-  baseUrl?: string,
-  url?: URL,
-) {
-  const fontFaces = font
-    ? buildFontFace(font, baseUrl)
-    : // : alwaysLoadFontFaces
-      //   ? [
-      //     buildFontFace('highscript', baseUrl),
-      //     buildFontFace('lowscript', baseUrl)
-      //     ].join("/**/")
-      "";
-  const bgColor = safeCssColor(
-    url?.searchParams?.get("bg") ||
-    url?.searchParams?.get("bg_color") ||
-    url?.searchParams?.get("bgColor")
-  );
 
-  return `*{box-sizing:border-box;margin:0;padding:0;font-size:16px}/*body{background-color:${bgColor};}*/${fontFaces}.highscript{font-family:"High Blockscript"}.lowscript{font-family:"Low Blockscript"}.asciiart{background-clip:text;background-position:center center;background-repeat:no-repeat;background-size:cover;-webkit-text-fill-color:transparent;text-fill-color:transparent;word-break:break-all;color:#fff;font-size:clamp(10px,2vw,12px);text-align:justify}.art-box{overflow:hidden;background-color:${bgColor};max-width:750px;max-height:750px;}.art{width:100%;height:750px;}@media(max-width:640px){.art{max-width:calc(100vw - 16px);min-height:350px;max-height:calc(100vw - 16px)}}`;
+export function getAsciiifyStyles(url: URL) {
+  const cssFontFace = buildCssFontFace(url);
+  const baseColor = getBgColor(url);
+  const fontSize = getFontSize(url);
+  const artBoxPadding = getArtBoxPadding(url);
+  const width = getWidth(url);
+  const height = getHeight(url);
+  const aspectRatio = getAspectRatio(url);
+
+  return `*{box-sizing:border-box;margin:0;padding:0;}${cssFontFace}.highscript{font-family:"High Blockscript"}.lowscript{font-family:"Low Blockscript"}.asciiart{background-clip:text;background-position:center center;background-repeat:no-repeat;background-size:cover;-webkit-text-fill-color:transparent;text-fill-color:transparent;word-break:break-all;color:#fff;font-size:clamp(10px,2vw,12px);text-align:justify}.art-box{padding:${artBoxPadding};overflow:hidden;background-color:${baseColor};width:${width};height:${height};flex-shrink:0;}.art{font-size:${fontSize};width:100%;height:100%;padding:0;margin:0;}@media(max-width:640px){.art-box{width:100%;height:auto;aspect-ratio:${aspectRatio};flex-shrink:1;}}`;
 }
 
-export function getFontLinks(baseUrl?: string, font?: FontName) {
-  if (!font) return "";
+export function getHtmlFontPreload(url: URL, font?: string) {
+  const fontName = font || getFont(url);
+  if (!fontName) {
+    return "";
+  }
 
-  const prefix = normalizeBaseUrl(baseUrl ?? "");
-  const { woff2, otf } = FONT_HASHES[font];
+  const baseUrl = getBaseUrl(url);
+  const { woff2, otf } = FONT_HASHES[fontName];
 
   return [
-    `<link rel="preload" as="font" type="font/woff2" id="${font}-woff" crossorigin href="${prefix}/ethscriptions/${woff2}/content"/>`,
-    `<link rel="preload" as="font" type="font/otf" id="${font}-otf" crossorigin href="${prefix}/ethscriptions/${otf}/content"/>`,
+    `<link rel="preload" as="font" type="font/woff2" id="${fontName}-woff" crossorigin href="${baseUrl}/ethscriptions/${woff2}/content"/>`,
+    `<link rel="preload" as="font" type="font/otf" id="${fontName}-otf" crossorigin href="${baseUrl}/ethscriptions/${otf}/content"/>`,
   ].join("\n");
 }
 
-export function buildAsciiartDiv(metadata: AsciiartMetadata, font: FontName) {
-  return `<div class="art-box"><div class="asciiart art ${font || ""}" data-eid="${escapeHtml(String(metadata.transaction_hash))}" data-enumber="${escapeHtml(String(metadata.ethscription_number))}" style="background-image: url('${escapeHtml(metadata.content_uri)}')">${metadata.asciiContent}</div></div>`;
+export function buildAsciiartDiv(url: URL, metadata: AsciiartMetadata) {
+  const font = getFont(url);
+
+  return `<div class="art-box"><div class="asciiart art ${font}" data-eid="${escapeHtml(String(metadata.transaction_hash))}" data-enumber="${escapeHtml(String(metadata.ethscription_number))}" style="background-image: url('${escapeHtml(metadata.content_uri)}')">${metadata.asciiContent}</div></div>`;
 }

@@ -10,7 +10,8 @@
     "preview": "astro preview",
     "start": "astro dev",
     "typecheck": "bunx tsgo-dev -p ./tsconfig.json",
-    "format": "bunx biome check --write"
+    "format": "bunx biome check --write",
+    "fmt": "bunx biome check --write"
   },
   "dependencies": {
     "@astrojs/check": "0.9.9",

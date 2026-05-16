@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
 import { getCacheHeaders } from "@/lib/cache";
+import { buildCssFontFace } from "@/lib/styles";
+import { getFont } from "@/lib/url_getters";
 import { buildHtmlParts } from "@/lib/utils";
 
 export const GET: APIRoute = async ({ params, url }) => {
@@ -14,7 +16,13 @@ export const GET: APIRoute = async ({ params, url }) => {
     return new Response(htmlParts.error, { status: htmlParts.status });
   }
 
-  const finalHtml = `<html><head><title>Asciify Art - Ethscription #${htmlParts.data.ethscription_number.toLocaleString()}</title><style>${htmlParts.data.css}</style>${htmlParts.data.fontPreload}</head><body>${htmlParts.data.asciiartDiv}</body></html>`;
+  const font = getFont(url);
+  const fontFaceStrs = font
+    ? `<style
+      id="style-${font}">${buildCssFontFace(url)}</style>`
+    : "";
+
+  const finalHtml = `<html><head>${htmlParts.data.fontPreload}<title>Asciify Art - Ethscription #${htmlParts.data.ethscription_number.toLocaleString()}</title>${fontFaceStrs}<style>${htmlParts.data.css}</style></head><body>${htmlParts.data.asciiartDiv}</body></html>`;
 
   return new Response(finalHtml, {
     status: 200,

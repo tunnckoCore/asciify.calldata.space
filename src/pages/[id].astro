@@ -1,7 +1,7 @@
 ---
 // import Asciify from "../components/Asciify.jsx";
 import { ClientRouter } from "astro:transitions";
-import { buildFontFace, getAsciiifyStyles, getFontLinks } from "@/lib/styles";
+import { getAsciiifyStyles, getHtmlFontPreload } from "@/lib/styles";
 import { buildHtmlParts } from "@/lib/utils";
 
 // export const prerender = false;
@@ -133,8 +133,8 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
         <meta name="viewport" content="width=device-width" />
         <meta name="generator" content={Astro.generator} />
-        <Fragment set:html={getFontLinks(url.origin, "highscript")} />
-        <Fragment set:html={getFontLinks(url.origin, "lowscript")} />
+        <Fragment set:html={getHtmlFontPreload(url, "highscript")} />
+        <Fragment set:html={getHtmlFontPreload(url, "lowscript")} />
 
         <ClientRouter />
 
@@ -159,18 +159,18 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
         <meta name="twitter:description" content={ogDescription} />
         <meta name="twitter:image" content={ogImage} />
 
-        <style set:html={getAsciiifyStyles(null, baseUrl, url)}></style>
-        <style
+        <style set:html={getAsciiifyStyles(url)}></style>
+        <!-- <style
             id="style-highscript"
             set:html={buildFontFace("highscript", baseUrl)}
         ></style>
         <style
             id="style-lowscript"
             set:html={buildFontFace("lowscript", baseUrl)}
-        ></style>
+        ></style> -->
     </head>
     <body
-        class="pb-10 px-4 mx-auto flex w-full max-w-[750px] flex-col gap-2 items-center justify-center bg-black"
+        class="pb-10 mx-auto flex w-full max-w-[750px] flex-col gap-2 items-center justify-center bg-black"
     >
         <h1 class="text-4xl font-extrabold text-gray-200 text-shadow mt-4 mb-2">
             <a href="/">Asciify.Art</a>
@@ -287,9 +287,7 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
             </div>
         </div>
         <!-- Art: desktop order-3, mobile order-1 (appears before search/navbar on mobile) -->
-        <div
-            class="w-full flex items-center overflow-hidden p-0 m-0 justify-center border border-gray-100 order-1 md:order-3"
-        >
+        <div class="w-fit border border-gray-100 order-1 md:order-3">
             {
                 res.isNotImage && (
                     <div class="mt-3.5 flex w-full flex-col items-center justify-center text-gray-100 px-2">
@@ -304,6 +302,12 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
             }
             {!res.isNotImage && <Fragment set:html={res.asciiartDiv} />}
         </div>
+        <!-- <div class="w-full">
+            <iframe
+                src={`http://localhost:4321/498602/html?font=highscript&ts=${Date.now()}`}
+                class="p-0 m-0 w-[200px] h-[200px]">x</iframe
+            >
+        </div> -->
         <script type="module" is:inline>
             import domToImageMore from "https://esm.sh/dom-to-image-more@3.2.0";
 
