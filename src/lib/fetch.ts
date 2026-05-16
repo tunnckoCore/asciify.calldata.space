@@ -8,7 +8,7 @@ import {
 
 export const ETHSCRIPTION_API_BASE_URL = 'https://mainnet.api.calldata.space';
 
-const metadataUrl = (id: EthscriptionId) => `${ETHSCRIPTION_API_BASE_URL}/ethscriptions/${id}`;
+const metadataUrl = (id: EthscriptionId) => `${ETHSCRIPTION_API_BASE_URL}/ethscriptions/${id}?with=ethscription_number,content_uri`;
 const contentUrl = (id: EthscriptionId) => `${ETHSCRIPTION_API_BASE_URL}/ethscriptions/${id}/content`;
 
 async function fetchJson<T>(url: string): Promise<T> {

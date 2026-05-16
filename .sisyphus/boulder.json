@@ -1,0 +1,35 @@
+{
+  "schema_version": 2,
+  "active_work_id": "asciify-netlify-migration-5711739a",
+  "works": {
+    "asciify-netlify-migration-5711739a": {
+      "work_id": "asciify-netlify-migration-5711739a",
+      "active_plan": "/home/arcka/code/asciify.calldata.space/.sisyphus/plans/asciify-netlify-migration.md",
+      "plan_name": "asciify-netlify-migration",
+      "status": "active",
+      "started_at": "2026-05-16T03:12:07.714Z",
+      "updated_at": "2026-05-16T03:12:07.714Z",
+      "session_ids": [
+        "ses_1d1950415ffej21bOokXgnMuE7"
+      ],
+      "session_origins": {
+        "ses_1d1950415ffej21bOokXgnMuE7": "direct"
+      },
+      "agent": "atlas",
+      "task_sessions": {}
+    }
+  },
+  "active_plan": "/home/arcka/code/asciify.calldata.space/.sisyphus/plans/asciify-netlify-migration.md",
+  "started_at": "2026-05-16T03:12:07.714Z",
+  "status": "active",
+  "updated_at": "2026-05-16T03:12:07.714Z",
+  "session_ids": [
+    "ses_1d1950415ffej21bOokXgnMuE7"
+  ],
+  "session_origins": {
+    "ses_1d1950415ffej21bOokXgnMuE7": "direct"
+  },
+  "plan_name": "asciify-netlify-migration",
+  "task_sessions": {},
+  "agent": "atlas"
+}

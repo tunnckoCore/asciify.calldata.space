@@ -41,7 +41,7 @@ export const GET: APIRoute = async ({ params, url }) => {
       content: backgroundAsciiContent,
     };
 
-    const css = getAsciiifyStyles();
+    const css = getAsciiifyStyles(font, baseUrl);
     const fontPreload = getFontLinks(baseUrl, font);
     const asciiartDiv = buildAsciiartDiv(metadata);
 

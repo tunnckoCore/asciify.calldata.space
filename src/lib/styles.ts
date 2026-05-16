@@ -27,67 +27,25 @@ const escapeHtml = (value: string) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
 
-const normalizeBaseUrl = (baseUrl: string) => baseUrl.replace(/\/+$/, "");
+const normalizeBaseUrl = (baseUrl: string) => {
+  let url = baseUrl.replace(/\/+$/, "");
+  if (url && !url.match(/^https?:\/\//)) {
+    url = `https://${url}`;
+  }
+  return url;
+};
 
-export function getAsciiifyStyles() {
-  return `
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
-
-@font-face {
-    font-family: "High Blockscript";
-    src:
-        url("/fonts/high-blockscript.woff2") format("woff2"),
-        url("/fonts/high-blockscript.otf") format("opentype");
-    font-display: swap;
+function buildFontFace(font: FontName, baseUrl?: string) {
+  const prefix = baseUrl ? normalizeBaseUrl(baseUrl) : "";
+  const { woff2, otf } = FONT_HASHES[font];
+  const family = font === "highscript" ? "High Blockscript" : "Low Blockscript";
+  return `@font-face{font-family:"${family}";src:url("${prefix}/${woff2}/content")format("woff2"),url("${prefix}/${otf}/content")format("opentype");font-display:swap}`;
 }
 
-@font-face {
-    font-family: "Low Blockscript";
-    src:
-        url("/fonts/low-blockscript.woff2") format("woff2"),
-        url("/fonts/low-blockscript.otf") format("opentype");
-    font-display: swap;
-}
+export function getAsciiifyStyles(font?: FontName, baseUrl?: string) {
+  const fontFaces = font ? buildFontFace(font, baseUrl) : "";
 
-.highscript {
-    font-family: "High Blockscript";
-}
-.lowscript {
-    font-family: "Low Blockscript";
-}
-
-.asciiart {
-    background-clip: text;
-    background-position: center center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    -webkit-text-fill-color: transparent;
-    text-fill-color: transparent;
-    word-break: break-all;
-    color: #fff;
-    font-size: clamp(10px, 2vw, 12px);
-    text-align: justify;
-}
-
-.art {
-    width: 100%;
-    max-width: 750px;
-    min-height: 750px;
-    max-height: 750px;
-}
-
-@media (max-width: 640px) {
-    .art {
-        max-width: calc(100vw - 16px);
-        min-height: 350px;
-        max-height: calc(100vw - 16px);
-    }
-}
-`;
+  return `*{box-sizing:border-box;margin:0;padding:0}${fontFaces}.highscript{font-family:"High Blockscript"}.lowscript{font-family:"Low Blockscript"}.asciiart{background-clip:text;background-position:center center;background-repeat:no-repeat;background-size:cover;-webkit-text-fill-color:transparent;text-fill-color:transparent;word-break:break-all;color:#fff;font-size:clamp(10px,2vw,12px);text-align:justify}.art{width:100%;max-width:750px;min-height:750px;max-height:750px}@media(max-width:640px){.art{max-width:calc(100vw - 16px);min-height:350px;max-height:calc(100vw - 16px)}}`;
 }
 
 export function getFontLinks(baseUrl?: string, font?: FontName) {
