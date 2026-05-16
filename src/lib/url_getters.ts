@@ -15,14 +15,25 @@ export function getBgColor(url: URL) {
 }
 
 export function getFont(url: URL): "lowscript" | "highscript" {
-  return (url.searchParams.get("font") || "") as "lowscript" | "highscript";
+  const str = (url.searchParams.get("font") || "");
+  const fontStr = str as "lowscript" | "highscript"
+
+  if (fontStr === 'lowscript') {
+    return fontStr as 'lowscript';
+  }
+
+  if (fontStr === 'highscript') {
+    return fontStr as 'highscript';
+  }
+
+  return fontStr;
 }
 
 export function getFontSize(url: URL) {
   return (
     url.searchParams.get("fontSize") ||
     url.searchParams.get("font_size") ||
-    "16px"
+    "15px"
   );
 }
 
