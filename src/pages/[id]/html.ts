@@ -25,15 +25,12 @@ export const GET: APIRoute = async ({ params, url }) => {
       return new Response('Not Found', { status: 404 });
     }
 
-    const num = Number(res.ethscription_number);
+    const num = Number(res.ethscription_number ?? '498580');
 
-    let content = typeof res.content === 'string' ? res.content : '';
-    if (!content) {
-      content = JSON.stringify(res);
-      while (content.length < 18_000) {
-        const curr = content.length;
-        content += curr > 1000 ? content.slice(0, 1000) : content;
-      }
+    let backgroundAsciiContent = JSON.stringify(res);
+    while (backgroundAsciiContent.length < 18_000) {
+      const curr = backgroundAsciiContent.length;
+      backgroundAsciiContent += curr > 1000 ? backgroundAsciiContent.slice(0, 1000) : backgroundAsciiContent;
     }
 
     const metadata: AsciiartMetadata = {
@@ -41,7 +38,7 @@ export const GET: APIRoute = async ({ params, url }) => {
       ethscription_number: String(res.ethscription_number ?? id),
       content_uri: String(res.content_uri ?? ''),
       blockscript: typeof res.blockscript === 'string' ? res.blockscript : null,
-      content,
+      content: backgroundAsciiContent,
     };
 
     const css = getAsciiifyStyles();

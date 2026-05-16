@@ -73,8 +73,6 @@ while (backgroundAsciiContent.length < 18_000) {
 }
 
 const blockscript = url.searchParams.get('blockscript') || null;
-const asciiifyStyles = getAsciiifyStyles();
-void asciiifyStyles;
 
 // === Sepolia
 // highscript woff2 gzip = 0x2f8397abd2d4244c3c2196fcabae519ef625ac292eeeccbbf632b01252366702
@@ -237,11 +235,8 @@ void asciiifyStyles;
             newDownloadButton.addEventListener("click", async () => {
                 const container = document.querySelector('.asciiart');
                 if (container) {
-                    console.log("Downloading...");
                     // Measure actual element dimensions
-                    const width = container.offsetWidth;
                     const height = container.offsetHeight;
-                    console.log(`Measured dimensions: ${width}x${height}`);
 
                     const res = await domToImageMore.toPng(container, {
                         width: 750,
@@ -256,9 +251,8 @@ void asciiifyStyles;
                     link.target = "_blank";
                     link.download = `${container.dataset.enumber}-${container.dataset.eid}.png`;
                     link.click();
-                    console.log("Download complete");
                 } else {
-                    console.log("No container found");
+                    // Container not found
                 }
             });
         }
@@ -270,84 +264,6 @@ void asciiifyStyles;
         document.addEventListener('astro:after-swap', initDownloadButton);
     </script>
 
-    <!-- <Asciify meta={meta} prev={prev} next={next} client:load /> -->
-    <!-- <script type="module" is:inline define:vars={{ isNotImage: isNotImage }}>
-      import domToImageMore from 'https://esm.sh/dom-to-image-more@3.2.0';
 
-      const downloadButton = document.querySelector('#download-btn');
-
-      // const mapping = {
-      //   jpeg: domToImageMore.toJpeg,
-      //   jpg: domToImageMore.toJpeg,
-      //   png: domToImageMore.toPng,
-      // };
-
-      function base64ToUint8Array(base64String) {
-        // base64 sanitizing
-        const base64 = base64urlToBase64(base64String);
-
-        // base64 decoding
-        const rawData = atob(base64);
-
-        // Converting raw data to Uint8Array
-        return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
-      }
-
-      function base64urlToBase64(base64UrlString) {
-        // Replace non-url compatible chars with base64 standard chars
-        const base64 = base64UrlString.replace(/-/g, '+').replace(/_/g, '/');
-
-        // Pad out with standard base64 required padding characters if missing
-        const missingPadding = '='.repeat((4 - (base64.length % 4)) % 4);
-
-        return base64 + missingPadding;
-      }
-
-      function base64toFile(b64, filename) {
-        const url = new URL(window.location.href);
-        const imageType = dataURL.slice(5, dataURL.indexOf(';base64'));
-        const imageDataBase64 = dataURL.slice(dataURL.indexOf(',') + 1);
-
-        const imageUint8 = base64ToUint8Array(imageDataBase64);
-        const imageName = `ethscription-` + url.pathname.replace(/^\//i, '');
-        const file = new File([imageUint8], filename || imageName, { type: imageType });
-
-        return file;
-      }
-
-      downloadButton.addEventListener('click', async () => {
-        if (isNotImage) return;
-
-        const art = document.querySelector('.art');
-
-        const dataURL = await domToImageMore.toPng(art, {
-          width: 750,
-          height: 750,
-          bgcolor: '#000',
-          style: {
-            padding: 0,
-            margin: 0,
-          },
-        });
-
-        // const canvas = await domToImageMore.toCanvas(art, {
-        //   width: 750,
-        //   height: 750,
-        //   bgcolor: "#000",
-        //   style: {
-        //     padding: 0,
-        //     margin: 0,
-        //   },
-        // });
-
-        // document.body.appendChild(canvas);
-
-        const link = document.createElement("a");
-        link.href = dataURL;
-        link.target = "_blank";
-        link.download = art.dataset.eid + ".png";
-        link.click();
-      });
-    </script> -->
   </body>
 </html>
