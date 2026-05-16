@@ -1,6 +1,7 @@
 ---
 // import Asciify from "../components/Asciify.jsx";
 import { ClientRouter } from "astro:transitions";
+import { getAsciiifyStyles, getFontLinks } from "../lib/styles";
 
 // export const prerender = false;
 
@@ -73,6 +74,8 @@ while (backgroundAsciiContent.length < 18_000) {
 }
 
 const blockscript = url.searchParams.get('blockscript') || null;
+const asciiifyStyles = getAsciiifyStyles();
+void asciiifyStyles;
 
 // === Sepolia
 // highscript woff2 gzip = 0x2f8397abd2d4244c3c2196fcabae519ef625ac292eeeccbbf632b01252366702
@@ -98,10 +101,8 @@ const blockscript = url.searchParams.get('blockscript') || null;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
-    <link rel="preload" as="font" type="font/woff2" id="highscript-woff" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a/content"/>
-    <link rel="preload" as="font" type="font/otf" id="highscript-otf" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0xcbf0c8a0c61f8018f9ad186e4aaa300faad892c6cbfa398841814f02c3bdea30/content"/>
-    <link rel="preload" as="font" type="font/woff2" id="lowscript-woff" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x6c588b716ba2c2eda5fc12acea9914a103f0bfeb0bb47ab2072cf523fa2339a8/content"/>
-    <link rel="preload" as="font" type="font/otf" id="lowscript-otf" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x665ba2d452904e03e1943e0800af42468e107b614ee4ec59d377a66ffbe5ea5d/content"/>
+    {getFontLinks("https://mainnet.api.calldata.space/ethscriptions", "highscript")}
+    {getFontLinks("https://mainnet.api.calldata.space/ethscriptions", "lowscript")}
 
     <ClientRouter />
 
@@ -126,65 +127,7 @@ const blockscript = url.searchParams.get('blockscript') || null;
     <meta name="twitter:description" content={ogDescription} />
     <meta name="twitter:image" content={ogImage} />
 
-    <style is:global>
-      /* define:vars={{ contentUri: `url("${meta.content_uri}")` }} */
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-    }
-
-    @font-face {
-        font-family: "High Blockscript";
-        src:
-            url("/fonts/high-blockscript.woff2") format("woff2"),
-            url("/fonts/high-blockscript.otf") format("opentype");
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: "Low Blockscript";
-        src:
-            url("/fonts/low-blockscript.woff2") format("woff2"),
-            url("/fonts/low-blockscript.otf") format("opentype");
-        font-display: swap;
-    }
-
-    .highscript {
-        font-family: "High Blockscript";
-    }
-    .lowscript {
-        font-family: "Low Blockscript";
-    }
-
-    .asciiart {
-        background-clip: text;
-        background-position: center center;
-        background-repeat: no-repeat;
-        background-size: cover;
-        -webkit-text-fill-color: transparent;
-        text-fill-color: transparent;
-        word-break: break-all;
-        color: #fff;
-        font-size: clamp(10px, 2vw, 12px);
-        text-align: justify;
-    }
-
-    .art {
-        width: 100%;
-        max-width: 750px;
-        min-height: 750px;
-        max-height: 750px;
-    }
-
-    @media (max-width: 640px) {
-        .art {
-            max-width: calc(100vw - 16px);
-            min-height: 350px;
-            max-height: calc(100vw - 16px);
-        }
-    }
-    </style>
+    <style is:global>{asciiifyStyles}</style>
   </head>
   <body class="pb-10 px-4 mx-auto flex w-full max-w-[750px] flex-col gap-2 items-center justify-center bg-black">
       <h1 class="text-4xl font-extrabold text-gray-200 text-shadow mt-4 mb-2"><a href="/">Asciify.Art</a></h1>
