@@ -84,6 +84,9 @@ export function getHtmlFontPreload(url: URL, font?: string) {
   if (!fontName) {
     return "";
   }
+  if (fontName !== "highscript" && fontName !== "lowscript") {
+    return "";
+  }
 
   const baseUrl = getBaseUrl(url);
   const { woff2, otf } = FONT_HASHES[fontName];
