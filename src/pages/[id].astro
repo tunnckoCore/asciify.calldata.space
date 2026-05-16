@@ -21,12 +21,12 @@ const url = new URL(Astro.request.url);
 const { id } = Astro.params;
 
 
-let meta = await fetch('https://mainnet.api.calldata.space/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
+let meta = await fetch(url.origin + '/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
   x.json(),
 );
 
 if (meta.media_type === 'image' && meta.image_removed_by_request_of_rights_holder) {
-  const resp = await fetch('https://mainnet.api.calldata.space/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
+  const resp = await fetch(url.origin + '/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
     x.json(),
   );
   meta = resp.data;
@@ -57,7 +57,7 @@ const ogHref = url.origin + url.pathname;
 // const ogEths = `Ethscription #${num.toLocaleString()}`;
 const ogDescription = `ASCII-fy your Ethscription Image`;
 const ogTitle = `Asciify.Art - Ethscription #${num.toLocaleString()}`
-const ogImage = (isNotImage || id === '498580') ? `${url.origin}/og-image.png` : `https://mainnet.api.calldata.space/ethscriptions/${res.ethscription_number}/content`;
+const ogImage = (isNotImage || id === '498580') ? `${url.origin}/og-image.png` : `${url.origin}/ethscriptions/${res.ethscription_number}/content`;
 // const imgUrl = `${url.origin}/og/${res.transaction_hash}-${isNotImage ? 0 : 1}.png?ts=${Date.now()}`;
 // // const imgUrl = `https://api.wgw.lol/api/ethscriptions/${isNotImage ? 0 : meta.transaction_hash}/data?noscale=1`;
 // const ogImage = `https://ogcdn.net/6064b869-74ed-4eb9-b76c-0b701ffe7e6b/v4/asciify.art/${encodeURIComponent(ogEths)}/${encodeURIComponent(imgUrl)}/og.png`;
@@ -101,8 +101,8 @@ void asciiifyStyles;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
-    {getFontLinks("https://mainnet.api.calldata.space/ethscriptions", "highscript")}
-    {getFontLinks("https://mainnet.api.calldata.space/ethscriptions", "lowscript")}
+    {getFontLinks(`${url.origin}/ethscriptions`, "highscript")}
+    {getFontLinks(`${url.origin}/ethscriptions`, "lowscript")}
 
     <ClientRouter />
 
