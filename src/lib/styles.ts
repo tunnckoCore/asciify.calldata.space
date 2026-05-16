@@ -70,7 +70,7 @@ export function getAsciiifyStyles(
     url?.searchParams?.get("bgColor")
   );
 
-  return `*{box-sizing:border-box;margin:0;padding:0}body{background-color:${bgColor};}${fontFaces}.highscript{font-family:"High Blockscript"}.lowscript{font-family:"Low Blockscript"}.asciiart{background-clip:text;background-position:center center;background-repeat:no-repeat;background-size:cover;-webkit-text-fill-color:transparent;text-fill-color:transparent;word-break:break-all;color:#fff;font-size:clamp(10px,2vw,12px);text-align:justify}.art{padding:0.5rem;width:100%;max-width:750px;min-height:750px;max-height:750px}@media(max-width:640px){.art{max-width:calc(100vw - 16px);min-height:350px;max-height:calc(100vw - 16px)}}`;
+  return `*{box-sizing:border-box;margin:0;padding:0;font-size:16px}/*body{background-color:${bgColor};}*/${fontFaces}.highscript{font-family:"High Blockscript"}.lowscript{font-family:"Low Blockscript"}.asciiart{background-clip:text;background-position:center center;background-repeat:no-repeat;background-size:cover;-webkit-text-fill-color:transparent;text-fill-color:transparent;word-break:break-all;color:#fff;font-size:clamp(10px,2vw,12px);text-align:justify}.art-box{overflow:hidden;background-color:${bgColor};max-width:750px;max-height:750px;}.art{width:100%;height:750px;}@media(max-width:640px){.art{max-width:calc(100vw - 16px);min-height:350px;max-height:calc(100vw - 16px)}}`;
 }
 
 export function getFontLinks(baseUrl?: string, font?: FontName) {
@@ -86,5 +86,5 @@ export function getFontLinks(baseUrl?: string, font?: FontName) {
 }
 
 export function buildAsciiartDiv(metadata: AsciiartMetadata, font: FontName) {
-  return `<div class="asciiart art ${font || ""}" data-eid="${escapeHtml(String(metadata.transaction_hash))}" data-enumber="${escapeHtml(String(metadata.ethscription_number))}" style="background-image: url('${escapeHtml(metadata.content_uri)}')">${metadata.asciiContent}</div>`;
+  return `<div class="art-box"><div class="asciiart art ${font || ""}" data-eid="${escapeHtml(String(metadata.transaction_hash))}" data-enumber="${escapeHtml(String(metadata.ethscription_number))}" style="background-image: url('${escapeHtml(metadata.content_uri)}')">${metadata.asciiContent}</div></div>`;
 }
