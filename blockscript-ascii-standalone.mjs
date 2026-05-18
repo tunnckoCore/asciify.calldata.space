@@ -23,22 +23,10 @@
       --output-data-uri ./mfpurr-blockscript.datauri.txt
 */
 
-import { execFile } from "node:child_process";
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readFile as readOutputFile,
-  rm,
-  writeFile,
-} from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
-import { promisify } from "node:util";
 import sharp from "sharp";
-
-const execFileAsync = promisify(execFile);
 
 const GLYPH_ROWS = Object.freeze({
   "!": [
@@ -1339,44 +1327,26 @@ export async function render(options) {
   let mimeType;
 
   if (isAnimatedGif) {
-    const tempDir = await mkdtemp(path.join(tmpdir(), "blockscript-gif-"));
-    try {
-      const args = [];
-      // sharp reports GIF delays in milliseconds; ImageMagick -delay expects centiseconds.
-      const delays = metadata.delay?.length
-        ? metadata.delay
-        : Array.from({ length: pages }, () => 100);
-      for (let page = 0; page < pages; page += 1) {
-        const framePath = path.join(
-          tempDir,
-          `frame-${String(page).padStart(4, "0")}.png`,
-        );
-        const frame = output.subarray(
-          page * outputWidth * outputHeight * 4,
-          (page + 1) * outputWidth * outputHeight * 4,
-        );
-        const framePng = await sharp(frame, {
+    const framePngs = [];
+    for (let page = 0; page < pages; page += 1) {
+      const frame = output.subarray(
+        page * outputWidth * outputHeight * 4,
+        (page + 1) * outputWidth * outputHeight * 4,
+      );
+      framePngs.push(
+        await sharp(frame, {
           raw: { width: outputWidth, height: outputHeight, channels: 4 },
         })
           .png({ palette: true, effort: 10, compressionLevel: 9 })
-          .toBuffer();
-        await writeFile(framePath, framePng);
-        args.push(
-          "-delay",
-          String(
-            Math.max(1, Math.round((delays[page] ?? delays[0] ?? 100) / 10)),
-          ),
-          framePath,
-        );
-      }
-      const gifOutput = options.output || path.join(tempDir, "output.gif");
-      args.push("-loop", String(metadata.loop ?? 0), gifOutput);
-      await execFileAsync("magick", args);
-      rendered = await readOutputFile(gifOutput);
-      mimeType = "image/gif";
-    } finally {
-      await rm(tempDir, { recursive: true, force: true });
+          .toBuffer(),
+      );
     }
+
+    rendered = await sharp(framePngs, { join: { animated: true } })
+      .gif({ effort: 10, loop: metadata.loop ?? 0, delay: metadata.delay })
+      .toBuffer();
+    mimeType = "image/gif";
+    if (options.output) await writeFile(options.output, rendered);
   } else {
     rendered = await sharp(output, {
       raw: {
