@@ -39,21 +39,33 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
   const gridHeight = positiveInt(url.searchParams.get("gridHeight"), defaultGridHeight, 512);
 
   const { render } = await import("../../../blockscript-ascii-standalone.mjs");
-  const result = await render({
-    input: Buffer.from(content.contentBody),
-    output: null,
-    cellWidth,
-    cellHeight,
-    gridWidth,
-    gridHeight,
-    background: url.searchParams.get("background") ?? "#05000B",
-    transparentGlyph: url.searchParams.get("transparentGlyph") ?? "#26235D",
-    transparentMode: url.searchParams.get("transparentMode") === "skip" ? "skip" : "dim",
-    alphaThreshold: positiveInt(url.searchParams.get("alphaThreshold"), 12, 255),
-    circle: url.searchParams.has("circle"),
-    heart: url.searchParams.has("heart"),
-    palette: url.searchParams.has("palette"),
-  });
+  let result;
+  try {
+    result = await render({
+      input: Buffer.from(content.contentBody),
+      output: null,
+      cellWidth,
+      cellHeight,
+      gridWidth,
+      gridHeight,
+      background: url.searchParams.get("background") ?? "#05000B",
+      transparentGlyph: url.searchParams.get("transparentGlyph") ?? "#26235D",
+      transparentMode: url.searchParams.get("transparentMode") === "skip" ? "skip" : "dim",
+      alphaThreshold: positiveInt(url.searchParams.get("alphaThreshold"), 12, 255),
+      circle: url.searchParams.has("circle"),
+      heart: url.searchParams.has("heart"),
+      palette: url.searchParams.has("palette"),
+    });
+  } catch (error) {
+    return new Response(error instanceof Error ? error.stack || error.message : String(error), {
+      status: 500,
+      headers: {
+        "content-type": "text/plain; charset=utf-8",
+        "x-ethscription-id": id,
+        "x-asciify-route": `image/${fmt}`,
+      },
+    });
+  }
 
   const body = new Uint8Array(result.image ?? result.png);
 
