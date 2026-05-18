@@ -46,17 +46,15 @@ export const GET: APIRoute = async ({ params, url }) => {
 
   const finalHtml = `<html><head>${htmlParts.data.fontPreload}<title>Asciify Art - Ethscription #${htmlParts.data.ethscription_number.toLocaleString()}</title>${fontFaceStrs}<style>${htmlParts.data.css}</style></head><body>${htmlParts.data.asciiartDiv}</body></html>`;
   const htmlBytes = new TextEncoder().encode(finalHtml);
-  const htmlBase64 = bytesToBase64(htmlBytes)
+  const htmlBase64 = bytesToBase64(htmlBytes);
 
-  return new Response(`data:text/html;base64,${htmlBase64}`,
-    {
-      status: 200,
-      headers: {
-        ...getCacheHeaders(),
-        "x-ethscription-id": id,
-        "content-type": "text/plain",
-        "content-length": String(htmlBase64.length),
-      },
+  return new Response(`data:text/html;base64,${htmlBase64}`, {
+    status: 200,
+    headers: {
+      ...getCacheHeaders(),
+      "x-ethscription-id": id,
+      "content-type": "text/plain",
+      "content-length": String(htmlBase64.length),
     },
-  );
+  });
 };

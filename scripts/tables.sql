@@ -2,7 +2,7 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS collections (
     -- Contract address of the collection.
-    collection_id TEXT PRIMARY KEY,
+    contract_address TEXT PRIMARY KEY,
 
     -- Collection metadata.
     -- UNIQUE creates indexes automatically.
@@ -11,50 +11,66 @@ CREATE TABLE IF NOT EXISTS collections (
     supply INTEGER
 );
 
-CREATE TABLE IF NOT EXISTS items (
-    -- References collections.collection_id.
-    collection_id TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS ethscriptions (
+    -- References collections.contract_address.
+    contract_address TEXT NOT NULL,
 
     -- Token ID is unique within a collection.
-    token_id TEXT NOT NULL,
+    token_id INTEGER NOT NULL,
 
-    -- Globally unique item identifiers.
+    -- Globally unique ethscription identifiers.
     -- UNIQUE creates indexes automatically.
     ethscription_number INTEGER NOT NULL UNIQUE,
     ethscription_id TEXT NOT NULL UNIQUE,
 
-    -- Also creates an index on (collection_id, token_id).
-    PRIMARY KEY (collection_id, token_id),
+    -- Also creates an index on (contract_address, token_id).
+    PRIMARY KEY (contract_address, token_id),
 
-    FOREIGN KEY (collection_id)
-    REFERENCES collections(collection_id)
+    FOREIGN KEY (contract_address)
+    REFERENCES collections(contract_address)
 );
 
-CREATE TABLE IF NOT EXISTS item_attributes (
-    -- References items(collection_id, token_id).
-    collection_id TEXT NOT NULL,
-    token_id TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS attributes (
+    -- References ethscriptions(contract_address, token_id).
+    contract_address TEXT NOT NULL,
+    token_id INTEGER NOT NULL,
 
     -- Flattened searchable attributes.
     trait_type TEXT NOT NULL,
     trait_value TEXT NOT NULL,
 
-    FOREIGN KEY (collection_id, token_id)
-    REFERENCES items(collection_id, token_id)
+    -- Denormalized for querying/ordering attribute queries globally.
+    ethscription_number INTEGER NOT NULL,
+    ethscription_id TEXT NOT NULL,
+
+    FOREIGN KEY (contract_address, token_id)
+    REFERENCES ethscriptions(contract_address, token_id)
 );
 
--- Find attributes by collection + trait type.
-CREATE INDEX IF NOT EXISTS idx_item_attributes_collection_trait_type
-ON item_attributes(collection_id, trait_type);
+-- Find attributes by contract + trait type.
+CREATE INDEX IF NOT EXISTS idx_attributes_contract_trait_type
+ON attributes(contract_address, trait_type);
 
--- Find attributes by collection + trait value.
-CREATE INDEX IF NOT EXISTS idx_item_attributes_collection_trait_value
-ON item_attributes(collection_id, trait_value);
+-- Find attributes by contract + trait value.
+CREATE INDEX IF NOT EXISTS idx_attributes_contract_trait_value
+ON attributes(contract_address, trait_value);
 
--- Find attributes by collection + exact trait type/value pair.
-CREATE INDEX IF NOT EXISTS idx_item_attributes_collection_trait_type_value
-ON item_attributes(collection_id, trait_type, trait_value);
+-- Find attributes by contract + exact trait type/value pair.
+CREATE INDEX IF NOT EXISTS idx_attributes_contract_trait_type_value
+ON attributes(contract_address, trait_type, trait_value);
 
--- Join item_attributes back to items efficiently.
-CREATE INDEX IF NOT EXISTS idx_item_attributes_item
-ON item_attributes(collection_id, token_id);
+-- Join attributes back to ethscriptions efficiently.
+CREATE INDEX IF NOT EXISTS idx_attributes_ethscription
+ON attributes(contract_address, token_id);
+
+-- Filter by exact trait pair and order by ethscription number.
+CREATE INDEX IF NOT EXISTS idx_attributes_contract_trait_type_value_ethscription_number
+ON attributes(contract_address, trait_type, trait_value, ethscription_number);
+
+-- Global ordering by ethscription number from the attributes root.
+CREATE INDEX IF NOT EXISTS idx_attributes_ethscription_number
+ON attributes(ethscription_number);
+
+-- Lookup by ethscription id from the attributes root.
+CREATE INDEX IF NOT EXISTS idx_attributes_ethscription_id
+ON attributes(ethscription_id);

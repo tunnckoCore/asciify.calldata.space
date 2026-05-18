@@ -54,10 +54,10 @@
 // 0x1115d81087890b05AD8C703f09a9F64aeE49e653 - Blood, Trinity, & Coin
 // 0x88a3AE3FF376a5dbbe728C8b6E81a492E81FFD44 - Illegal Artifacts
 
+import { Database } from "bun:sqlite";
 import { createWriteStream } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { Database } from "bun:sqlite";
 
 import collections from "./collections";
 
@@ -141,7 +141,9 @@ async function fetchInstancesPage(contract: string, uniqueToken?: number) {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch ${url}: ${response.status} ${response.statusText}`,
+    );
   }
 
   return (await response.json()) as InstancesResponse;
@@ -153,8 +155,7 @@ function rowToCsv(row: CollectionItemRow) {
     row.ethscription_number,
     row.ethscription_id,
     csvEscape(row.attributes),
-  ]
-    .join(",");
+  ].join(",");
 }
 
 function normalizeAttributes(attributes: unknown) {
@@ -162,10 +163,12 @@ function normalizeAttributes(attributes: unknown) {
     return attributes.flatMap((attribute) => {
       if (!attribute || typeof attribute !== "object") return [];
 
-      const traitType = "trait_type" in attribute ? attribute.trait_type : undefined;
+      const traitType =
+        "trait_type" in attribute ? attribute.trait_type : undefined;
       const value = "value" in attribute ? attribute.value : undefined;
 
-      if (traitType === undefined || value === undefined || value === null) return [];
+      if (traitType === undefined || value === undefined || value === null)
+        return [];
 
       return [{ traitType: String(traitType), traitValue: String(value) }];
     });
@@ -287,7 +290,7 @@ export async function fetchCollection(collectionName: CollectionName | string) {
 
       uniqueToken = page.next_page_params?.unique_token;
 
-      console.log('Fetched...', fetched, 'of', collection.supply)
+      console.log("Fetched...", fetched, "of", collection.supply);
       Bun.sleep(2_000);
       if (uniqueToken === undefined || uniqueToken === null) {
         break;
@@ -298,9 +301,9 @@ export async function fetchCollection(collectionName: CollectionName | string) {
     statements.db.close();
   }
 
-  console.log('Done', collection.name)
+  console.log("Done", collection.name);
   return { collection: collection.name, fetched, outputPath, dbPath: DB_PATH };
 }
 
-await fetchCollection('JOINT')
-await fetchCollection('PIGGIES')
+await fetchCollection("JOINT");
+await fetchCollection("PIGGIES");

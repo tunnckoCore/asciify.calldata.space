@@ -1,0 +1,106 @@
+---
+const original = "/optimized/source.png";
+const variants = [
+  ["348295-320-q80.webp", 30448],
+  ["348295-320-q75.avif", 31323],
+  ["348295-384-q70.webp", 37094],
+  ["348295-384-q60.avif", 37303],
+  ["348295-512-q45.avif", 48192],
+  ["348295-640-q30.avif", 50076],
+  ["348295-512-q50.webp", 60254],
+  ["348295-750-q20.avif", 59799],
+  ["348295-600-q42.webp", 78528],
+  ["348295-700-q24.webp", 81164],
+  ["348295-640-q38.webp", 85228],
+  ["348295-700-q28.webp", 85666],
+  ["348295-750-t90k.avif", 89752],
+  ["348295-512-t90k.avif", 89339],
+  ["348295-320-t90k.avif", 89887],
+  ["348295-640-t90k.avif", 90294],
+  ["348295-384-t90k.avif", 92264],
+  ["348295-750-q16.webp", 92276],
+  ["348295-750-q20.webp", 99432],
+  ["348295-750-q24.webp", 106000],
+  ["348295-750-q30.webp", 114050],
+];
+
+const formatBytes = (bytes: number) => `${Math.round(bytes / 1024)} KB`;
+const getDims = (name: string) => name.match(/348295-(\d+)/)?.[1] ?? "750";
+const getKind = (name: string) => name.endsWith(".avif") ? "AVIF" : "WebP";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Optimized image comparison</title>
+  </head>
+  <body class="min-h-screen bg-stone-950 text-stone-100">
+    <main class="mx-auto max-w-7xl px-5 py-6">
+      <div class="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-stone-800 pb-4">
+        <div>
+          <h1 class="text-xl font-semibold tracking-tight">Optimized image comparison</h1>
+          <p class="mt-1 text-sm text-stone-400">Original underlay, variant overlay. Drag each slider to reveal more or less of the top-right variant.</p>
+        </div>
+        <div class="text-sm text-stone-400">Target: &lt; 96 KB</div>
+      </div>
+
+      <section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {variants.map(([name, size]) => {
+          const overTarget = Number(size) > 96 * 1024;
+          return (
+            <article class="overflow-hidden rounded-lg border border-stone-800 bg-stone-900">
+              <div class="relative aspect-square bg-black [--reveal:62%]" data-compare>
+                <img src={original} alt="Original" class="absolute inset-0 h-full w-full object-contain" loading="lazy" />
+                <img
+                  src={`/optimized/${name}`}
+                  alt={`${name} variant`}
+                  class="variant-image absolute inset-0 h-full w-full object-contain"
+                  loading="lazy"
+                />
+                <div class="pointer-events-none absolute bottom-2 left-2 rounded bg-black/70 px-2 py-1 text-xs text-stone-200">original</div>
+                <div class="pointer-events-none absolute right-2 top-2 rounded bg-black/70 px-2 py-1 text-xs text-stone-200">variant</div>
+              </div>
+
+              <div class="space-y-3 border-t border-stone-800 p-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <a href={`/optimized/${name}`} class="block truncate text-sm font-medium text-stone-100 hover:underline">{name}</a>
+                    <div class="mt-1 text-xs text-stone-500">{getKind(String(name))} · {getDims(String(name))}×{getDims(String(name))}</div>
+                  </div>
+                  <div class={`shrink-0 rounded px-2 py-1 text-xs ${overTarget ? "bg-amber-950 text-amber-300" : "bg-emerald-950 text-emerald-300"}`}>
+                    {formatBytes(Number(size))}
+                  </div>
+                </div>
+                <input class="w-full accent-stone-300" type="range" min="0" max="100" value="62" data-reveal />
+              </div>
+            </article>
+          );
+        })}
+      </section>
+    </main>
+
+    <style>
+      .variant-image {
+        clip-path: polygon(
+          calc(100% - var(--reveal)) 0,
+          100% 0,
+          100% var(--reveal),
+          calc(100% - var(--reveal)) 0
+        );
+      }
+    </style>
+
+    <script>
+      document.querySelectorAll("[data-compare]").forEach((card) => {
+        const compare = card instanceof HTMLElement ? card : null;
+        const input = compare?.parentElement?.querySelector("[data-reveal]");
+        if (!(compare && input instanceof HTMLInputElement)) return;
+
+        input.addEventListener("input", () => {
+          compare.style.setProperty("--reveal", `${input.value}%`);
+        });
+      });
+    </script>
+  </body>
+</html>
