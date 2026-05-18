@@ -95,9 +95,10 @@ export async function buildHtmlParts(
       content_uri: res.content_uri,
     };
 
-    const incomingSeed = url.searchParams.get('seed');
+    const incomingSeed = url.searchParams.get("seed");
     const content = url.searchParams.has("randomize")
-      ? shuffler(containerContent, incomingSeed ? Number(incomingSeed) : null).result
+      ? shuffler(containerContent, incomingSeed ? Number(incomingSeed) : null)
+          .result
       : containerContent;
 
     const asciiContent =

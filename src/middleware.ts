@@ -1,68 +1,56 @@
 import { defineMiddleware } from "astro:middleware";
+import { getCacheHeaders } from "@/lib/cache";
 
-async function digest(val: string | Uint8Array) {
-  const hash = await crypto.subtle.digest(
-    "SHA-256",
-    (typeof val === "string" ? new TextEncoder().encode(val) : val) as any,
-  );
+async function digest(value: ArrayBuffer) {
+  const hash = await crypto.subtle.digest("SHA-256", value);
   return Array.from(new Uint8Array(hash))
-    .map((b) => b.toString(16).padStart(2, "0"))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
     .join("");
 }
 
-export const onRequest = defineMiddleware(async (context, next) => {
-  const req = context.request;
-  const ifNoneMatch = req.headers.get("if-none-match");
+function etagMatches(ifNoneMatch: string | null, etag: string) {
+  if (!ifNoneMatch) return false;
+  return ifNoneMatch
+    .split(",")
+    .map((part) => part.trim())
+    .some((part) => part === etag || part === "*");
+}
 
-  // get the response that would normally be returned
+function shouldProcess(response: Response) {
+  if (!response.body) return false;
+  if (response.status < 200 || response.status >= 300) return false;
+  const contentType = response.headers.get("content-type") ?? "";
+  return /^(image\/|text\/|application\/json|application\/xml|application\/javascript)/.test(contentType);
+}
+
+export const onRequest = defineMiddleware(async ({ request }, next) => {
   const response = await next();
+  const ifNoneMatch = request.headers.get("if-none-match");
+  const cacheHeaders = getCacheHeaders();
 
-  // If there's already an ETag header set by something else, prefer it
-  const existingEtag = response.headers.get("etag");
-  if (existingEtag) {
-    if (ifNoneMatch && ifNoneMatch === existingEtag) {
-      // Client has the same version
-      const headers = new Headers();
-      headers.set("ETag", existingEtag);
-      headers.set("Cache-Control", "public, max-age=31536000, must-revalidate");
-
-      return new Response(null, { status: 304, headers });
-    }
-    // return response as-is (but ensure it's a Response object)
+  if (!shouldProcess(response)) {
     return response;
   }
 
-  // Heuristic: skip very large or streaming responses if needed.
-  // If the response has no body (304/204) just forward it
-  if (!response.body) return response;
-
-  // Clone the response to compute hash without losing original body
-  const clone = response.clone();
-
-  // Read entire body into ArrayBuffer (WARNING: memory for large bodies)
-  const buf = await clone.arrayBuffer();
-  const hash = await digest(new Uint8Array(buf));
-
-  // Format ETag (strong or weak as needed)
-  const etag = `"${hash}"`; // strong ETag example
-
-  // If client sent If-None-Match and it matches, return 304
-  if (ifNoneMatch && ifNoneMatch === etag) {
-    const headers = new Headers(response.headers);
-    headers.set("ETag", etag);
-    headers.set("Cache-Control", "public, max-age=31536000, must-revalidate");
-
-    return new Response(null, { status: 304, headers });
-  }
-
-  // Otherwise return the original body but add the ETag header.
+  const body = await response.arrayBuffer();
+  const etag = `"${await digest(body)}"`;
   const headers = new Headers(response.headers);
   headers.set("ETag", etag);
-  headers.set("Cache-Control", "public, max-age=31536000, must-revalidate");
+  for (const [key, value] of Object.entries(cacheHeaders)) {
+    headers.set(key, value);
+  }
 
-  // Return a new Response with the same status and body (using the ArrayBuffer),
-  // preserving headers. Using ArrayBuffer prevents having consumed the original stream.
-  return new Response(buf, {
+  if (etagMatches(ifNoneMatch, etag)) {
+    headers.delete("content-length");
+    headers.delete("content-type");
+    return new Response(null, {
+      status: 304,
+      headers,
+    });
+  }
+
+  headers.set("content-length", String(body.byteLength));
+  return new Response(body, {
     status: response.status,
     statusText: response.statusText,
     headers,
