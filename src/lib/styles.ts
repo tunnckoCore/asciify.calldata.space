@@ -75,8 +75,15 @@ export function getAsciiifyStyles(url: URL) {
   const width = getWidth(url);
   const height = getHeight(url);
   const aspectRatio = getAspectRatio(url);
+  const circle = url.searchParams.has("circle") ? "border-radius: 9999px;" : "";
+  const preview =
+    url.searchParams.has("preview") &&
+    (url.pathname.endsWith(".html") || url.pathname.endsWith("/html"))
+      ? `body{display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;}`
+      : "";
 
-  return `html,body{margin:0;padding:0;}*{box-sizing:border-box;margin:0;padding:0;}${cssFontFace}.highscript{font-family:"High Blockscript"}.lowscript{font-family:"Low Blockscript"}.asciiart{background-clip:text;background-position:center center;background-repeat:no-repeat;background-size:cover;-webkit-text-fill-color:transparent;text-fill-color:transparent;word-break:break-all;color:#fff;font-size:clamp(10px,2vw,12px);text-align:justify}.art-box{padding:${artBoxPadding};overflow:hidden;background-color:${baseColor};width:${width};height:${height};flex-shrink:0;}.art{${fontSize ? "font-size:" + fontSize + ";" : ""}width:100%;height:100%;padding:0;margin:0;}@media(max-width:640px){.art-box{width:100%;height:auto;aspect-ratio:${aspectRatio};flex-shrink:1;}}`;
+  return `
+  html,body{margin:0;padding:0;background-color:#000;}*{box-sizing:border-box;margin:0;padding:0;}${cssFontFace}.highscript{font-family:"High Blockscript"}.lowscript{font-family:"Low Blockscript"}.asciiart{background-clip:text;background-position:center center;background-repeat:no-repeat;background-size:cover;-webkit-text-fill-color:transparent;text-fill-color:transparent;word-break:break-all;color:#fff;font-size:clamp(10px,2vw,${fontSize});text-align:justify}.art-box{${circle}padding:${artBoxPadding};overflow:hidden;background-color:${baseColor};width:${width};height:${height};flex-shrink:0;}${preview}.art{width:100%;height:100%;padding:0;margin:0;}@media(max-width:640px){.art-box{width:100%;height:auto;aspect-ratio:${aspectRatio};flex-shrink:1;}}`;
 }
 
 export function getHtmlFontPreload(url: URL, font?: string) {
@@ -99,6 +106,8 @@ export function getHtmlFontPreload(url: URL, font?: string) {
 
 export function buildAsciiartDiv(url: URL, metadata: AsciiartMetadata) {
   const font = getFont(url);
-
-  return `<div class="art-box"><div class="asciiart art ${font}" data-eid="${escapeHtml(String(metadata.transaction_hash))}" data-enumber="${escapeHtml(String(metadata.ethscription_number))}" style="background-image: url('${escapeHtml(metadata.content_uri)}')">${metadata.asciiContent}</div></div>`;
+  const externalUrl = url.searchParams.get("url") || metadata.content_uri;
+  // https://pbs.twimg.com/profile_images/1727119277570883584/yMEnNJEs_400x400.jpg
+  const img = escapeHtml(externalUrl);
+  return `<div class="art-box"><div class="asciiart art ${escapeHtml(font)}" data-eid="${escapeHtml(String(metadata.transaction_hash))}" data-enumber="${escapeHtml(String(metadata.ethscription_number))}" style="background-image: url('${img}')">${metadata.asciiContent}</div></div>`;
 }
