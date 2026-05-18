@@ -13,7 +13,8 @@
       "astro/client",
       "node",
       "react",
-      "react-dom"
+      "react-dom",
+      "bun-types"
     ],
     "paths": {
       "@/*": [

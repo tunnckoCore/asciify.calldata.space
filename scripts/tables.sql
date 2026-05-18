@@ -1,6 +1,6 @@
 PRAGMA foreign_keys = ON;
 
-CREATE TABLE collections (
+CREATE TABLE IF NOT EXISTS collections (
     -- Contract address of the collection.
     collection_id TEXT PRIMARY KEY,
 
@@ -11,7 +11,7 @@ CREATE TABLE collections (
     supply INTEGER
 );
 
-CREATE TABLE items (
+CREATE TABLE IF NOT EXISTS items (
     -- References collections.collection_id.
     collection_id TEXT NOT NULL,
 
@@ -23,9 +23,6 @@ CREATE TABLE items (
     ethscription_number INTEGER NOT NULL UNIQUE,
     ethscription_id TEXT NOT NULL UNIQUE,
 
-    -- Original raw attributes JSON for display/export.
-    attributes TEXT CHECK (attributes IS NULL OR json_valid(attributes)),
-
     -- Also creates an index on (collection_id, token_id).
     PRIMARY KEY (collection_id, token_id),
 
@@ -33,7 +30,7 @@ CREATE TABLE items (
     REFERENCES collections(collection_id)
 );
 
-CREATE TABLE item_attributes (
+CREATE TABLE IF NOT EXISTS item_attributes (
     -- References items(collection_id, token_id).
     collection_id TEXT NOT NULL,
     token_id TEXT NOT NULL,
@@ -47,17 +44,17 @@ CREATE TABLE item_attributes (
 );
 
 -- Find attributes by collection + trait type.
-CREATE INDEX idx_item_attributes_collection_trait_type
+CREATE INDEX IF NOT EXISTS idx_item_attributes_collection_trait_type
 ON item_attributes(collection_id, trait_type);
 
 -- Find attributes by collection + trait value.
-CREATE INDEX idx_item_attributes_collection_trait_value
+CREATE INDEX IF NOT EXISTS idx_item_attributes_collection_trait_value
 ON item_attributes(collection_id, trait_value);
 
 -- Find attributes by collection + exact trait type/value pair.
-CREATE INDEX idx_item_attributes_collection_trait_type_value
+CREATE INDEX IF NOT EXISTS idx_item_attributes_collection_trait_type_value
 ON item_attributes(collection_id, trait_type, trait_value);
 
 -- Join item_attributes back to items efficiently.
-CREATE INDEX idx_item_attributes_item
+CREATE INDEX IF NOT EXISTS idx_item_attributes_item
 ON item_attributes(collection_id, token_id);

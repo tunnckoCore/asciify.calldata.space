@@ -57,12 +57,13 @@
 import { createWriteStream } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { parse } from "csv-parse/sync";
+import { Database } from "bun:sqlite";
 
 import collections from "./collections";
 
 const API_BASE_URL = "https://explorer.ethscriptions.com/api/v2";
 const OUTPUT_DIR = path.join(process.cwd(), "data", "ethscriptions");
+const DB_PATH = path.join(process.cwd(), "data", "ethscriptions.sqlite");
 
 type CollectionName = (typeof collections)[number]["name"];
 type Collection = (typeof collections)[number];
@@ -124,7 +125,7 @@ function findCollection(name: string): Collection {
 function shapeItem(item: TokenInstance): CollectionItemRow {
   return {
     token_id: Number(item.id),
-    ethscription_id: item.metadata?.ethscription_id ?? "",
+    ethscription_id: item.metadata?.ethscription_id.toLowerCase(),
     ethscription_number: Number(item.metadata?.ethscription_number),
     attributes: item.metadata?.attributes ?? [],
   };
@@ -146,9 +147,8 @@ async function fetchInstancesPage(contract: string, uniqueToken?: number) {
   return (await response.json()) as InstancesResponse;
 }
 
-function rowToCsv(contract: string, row: CollectionItemRow) {
+function rowToCsv(row: CollectionItemRow) {
   return [
-    contract,
     row.token_id,
     row.ethscription_number,
     row.ethscription_id,
@@ -157,15 +157,117 @@ function rowToCsv(contract: string, row: CollectionItemRow) {
     .join(",");
 }
 
-export async function fetchCollectionItemsToCsv(collectionName: CollectionName | string) {
+function normalizeAttributes(attributes: unknown) {
+  if (Array.isArray(attributes)) {
+    return attributes.flatMap((attribute) => {
+      if (!attribute || typeof attribute !== "object") return [];
+
+      const traitType = "trait_type" in attribute ? attribute.trait_type : undefined;
+      const value = "value" in attribute ? attribute.value : undefined;
+
+      if (traitType === undefined || value === undefined || value === null) return [];
+
+      return [{ traitType: String(traitType), traitValue: String(value) }];
+    });
+  }
+
+  if (attributes && typeof attributes === "object") {
+    return Object.entries(attributes).map(([traitType, value]) => ({
+      traitType,
+      traitValue: String(value),
+    }));
+  }
+
+  return [];
+}
+
+function openEthscriptionsDb() {
+  const db = new Database(DB_PATH);
+  db.exec("PRAGMA foreign_keys = ON");
+
+  return {
+    db,
+    insertCollection: db.prepare(`
+      INSERT INTO collections (collection_id, name, symbol, supply)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(collection_id) DO UPDATE SET
+        name = excluded.name,
+        symbol = excluded.symbol,
+        supply = excluded.supply
+    `),
+    insertItem: db.prepare(`
+      INSERT INTO items (
+        collection_id,
+        token_id,
+        ethscription_number,
+        ethscription_id
+      )
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(collection_id, token_id) DO UPDATE SET
+        ethscription_number = excluded.ethscription_number,
+        ethscription_id = excluded.ethscription_id
+    `),
+    deleteItemAttributes: db.prepare(`
+      DELETE FROM item_attributes
+      WHERE collection_id = ? AND token_id = ?
+    `),
+    insertItemAttribute: db.prepare(`
+      INSERT INTO item_attributes (collection_id, token_id, trait_type, trait_value)
+      VALUES (?, ?, ?, ?)
+    `),
+  };
+}
+
+function insertRows(
+  statements: ReturnType<typeof openEthscriptionsDb>,
+  collection: Collection,
+  rows: CollectionItemRow[],
+) {
+  const collectionId = collection.contract.toLowerCase();
+
+  const batch = statements.db.transaction((rows: CollectionItemRow[]) => {
+    for (const row of rows) {
+      const tokenId = String(row.token_id);
+
+      statements.insertItem.run(
+        collectionId,
+        tokenId,
+        row.ethscription_number,
+        row.ethscription_id,
+      );
+      statements.deleteItemAttributes.run(collectionId, tokenId);
+
+      for (const attribute of normalizeAttributes(row.attributes)) {
+        statements.insertItemAttribute.run(
+          collectionId,
+          tokenId,
+          attribute.traitType,
+          attribute.traitValue,
+        );
+      }
+    }
+  });
+
+  batch(rows);
+}
+
+export async function fetchCollection(collectionName: CollectionName | string) {
   const collection = findCollection(collectionName);
-  const filename = `${slugify(collection.name)}.csv`;
+  const filename = `${slugify(collection.name)}-${collection.contract.toLowerCase()}.csv`;
   const outputPath = path.join(OUTPUT_DIR, filename);
 
   await mkdir(OUTPUT_DIR, { recursive: true });
 
   const stream = createWriteStream(outputPath, { flags: "w" });
-  stream.write("contract,token_id,ethscription_number,ethscription_id,attributes\n");
+  const statements = openEthscriptionsDb();
+
+  stream.write("token_id,ethscription_number,ethscription_id,attributes\n");
+  statements.insertCollection.run(
+    collection.contract.toLowerCase(),
+    collection.name,
+    collection.symbol,
+    collection.supply,
+  );
 
   let uniqueToken: number | undefined;
   let fetched = 0;
@@ -174,26 +276,31 @@ export async function fetchCollectionItemsToCsv(collectionName: CollectionName |
     while (true) {
       const page = await fetchInstancesPage(collection.contract, uniqueToken);
 
-      for (const item of page.items) {
-        const row = shapeItem(item);
-        console.log(fetched, row.ethscription_number, row.token_id)
-        stream.write(`${rowToCsv(collection.contract.toLowerCase(), row)}\n`);
-        fetched += 1;
+      const rows = page.items.map(shapeItem);
+
+      for (const row of rows) {
+        stream.write(`${rowToCsv(row)}\n`);
       }
+
+      insertRows(statements, collection, rows);
+      fetched += rows.length;
 
       uniqueToken = page.next_page_params?.unique_token;
 
+      console.log('Fetched...', fetched, 'of', collection.supply)
+      Bun.sleep(2_000);
       if (uniqueToken === undefined || uniqueToken === null) {
         break;
       }
     }
   } finally {
     stream.end();
+    statements.db.close();
   }
 
-  return { collection: collection.name, fetched, outputPath };
+  console.log('Done', collection.name)
+  return { collection: collection.name, fetched, outputPath, dbPath: DB_PATH };
 }
 
-const result = await fetchCollectionItemsToCsv('blocks')
-
-console.log(result)
+await fetchCollection('JOINT')
+await fetchCollection('PIGGIES')
