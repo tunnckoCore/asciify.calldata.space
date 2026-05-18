@@ -23,11 +23,11 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
   if (!content.contentType?.startsWith("image/")) {
     return new Response("Not an image", { status: 415 });
   }
-  if (content.contentType.includes("gif") && fmt !== "gif") {
-    return ctx.redirect(`/${id}.gif`);
-  }
-  if (content.contentType.includes("png") && fmt !== "png") {
-    return ctx.redirect(`/${id}.png`);
+  const normalizedContentType = content.contentType.toLowerCase();
+  const outputFmt = normalizedContentType.includes("gif") ? "gif" : "png";
+
+  if (fmt !== outputFmt) {
+    return ctx.redirect(`/${id}.${outputFmt}`);
   }
 
   const cellWidth = positiveInt(url.searchParams.get("cellWidth"), 8, 64);
