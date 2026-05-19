@@ -5,8 +5,8 @@ import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
 
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 
-const DEFAULT_CELL_SIZE = 8;
-const DEFAULT_RESO_SIZE = 352;
+const DEFAULT_CELL_SIZE = 9;
+const DEFAULT_RESO_SIZE = 372;
 
 function positiveInt(value: string | null, fallback: number, max = 4096) {
   if (!value) return fallback;
@@ -77,6 +77,15 @@ function detectImageFormat(bytes: Uint8Array) {
     bytes[5] === 0x61
   ) {
     return "gif";
+  }
+
+  if (
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[bytes.length - 2] === 0xff &&
+    bytes[bytes.length - 1] === 0xd9
+  ) {
+    return "jpeg";
   }
 
   return null;

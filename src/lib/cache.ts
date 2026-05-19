@@ -1,3 +1,6 @@
+
+const DEV = process.env.DEV == null ? import.meta.env.DEV : process.env.DEV === "true";
+
 export const CACHE_TTL_SECONDS = 31536000;
 export const EXCLUDED_QS = [
   "fbclid",
@@ -34,7 +37,7 @@ type CacheValue = {
 const memoryCache = new Map<string, CacheValue>();
 
 export function getCacheHeaders() {
-  if (import.meta.env.DEV) {
+  if (DEV) {
     return {
       "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
       Pragma: "no-cache",
@@ -69,7 +72,7 @@ export function getCacheKey(urlstr: string, tag = "eths") {
 }
 
 export function getInMemoryCachedValue<T>(key: string): T | undefined {
-  if (import.meta.env.DEV) return undefined;
+  if (DEV) return undefined;
 
   const cached = memoryCache.get(getCacheKey(key));
   if (!cached || cached.expiresAt <= Date.now()) {
@@ -85,7 +88,7 @@ export function setInMemoryCachedValue<T>(
   value: T,
   ttlMs = CACHE_TTL_SECONDS * 1000,
 ): T {
-  if (import.meta.env.DEV) return value;
+  if (DEV) return value;
 
   memoryCache.set(getCacheKey(key), {
     expiresAt: Date.now() + ttlMs,

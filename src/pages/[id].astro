@@ -4,6 +4,7 @@ import { ClientRouter } from "astro:transitions";
 import { getAsciiifyStyles, getHtmlFontPreload } from "@/lib/styles";
 import { buildHtmlParts } from "@/lib/utils";
 import { getFont } from "@/lib/url_getters";
+import { getCacheHeaders } from "@/lib/cache";
 
 // export const prerender = false;
 
@@ -59,6 +60,7 @@ const res = htmlParts.data;
 
 let [, IMG_EXT] = res.content_type.split("/");
 IMG_EXT = IMG_EXT.includes("svg") ? "svg" : IMG_EXT;
+IMG_EXT = /jpe?g/.test(IMG_EXT) ? "png" : IMG_EXT;
 
 const num = Number(res.ethscription_number);
 
@@ -67,6 +69,11 @@ const next = num + 1;
 
 Astro.response.headers.set("x-asciify-art-prev", String(prev));
 Astro.response.headers.set("x-asciify-art-next", String(next));
+
+const cacheHeaders = getCacheHeaders();
+Object.entries(cacheHeaders).forEach(([key, val]) => {
+    Astro.response.headers.set(key, val);
+});
 
 // if (!meta.mimetype.startsWith("image/") || meta.mimetype === "image/svg+xml") {
 //   const newLoc = mode === "next" ? next : prev;
@@ -294,9 +301,9 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
             </div>
         </div>
         <!-- Art: desktop order-3, mobile order-1 (appears before search/navbar on mobile) -->
-        <div class="w-fit border border-gray-100 order-1 md:order-3">
-            {
-                res.isNotImage && (
+        {
+            res.isNotImage && (
+                <div class="order-1 w-fit border border-gray-100 md:order-3">
                     <div class="mt-3.5 flex w-full flex-col items-center justify-center text-gray-100 px-2">
                         <h2 class="text-xl sm:text-3xl font-bold text-center">
                             Not an image, try another
@@ -305,18 +312,22 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
                             {JSON.stringify({ foo: "bar" })}
                         </div>
                     </div>
-                )
-            }
-            {
-                !res.isNotImage && (
-                    <iframe
-                        src={`/${current}.${IMG_EXT}?cell=9&size=768`}
-                        class="p-0 m-0 w-[770px] h-[770px] pt-1 pl-1"
-                    />
-                )
-            }
-            <!-- {!res.isNotImage && <Fragment set:html={res.asciiartDiv} />} -->
-        </div>
+                </div>
+            )
+        }
+        {
+            !res.isNotImage && (
+                <div class="order-1 flex items-center justify-center border border-gray-100 md:order-3">
+                    <div class="size-[456px] pt-1 pl-1 overflow-hidden bg-black">
+                        <iframe
+                            src={`/${current}.${IMG_EXT}?size=452`}
+                            title={`Asciified Ethscription #${current}`}
+                            class="block size-[452px] p-0 m-0 border-0"
+                        />
+                    </div>
+                </div>
+            )
+        }
         <!-- <div class="w-full">
             <iframe
                 src={`http://localhost:4321/498602/html?font=highscript&ts=${Date.now()}`}
