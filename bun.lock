@@ -13,6 +13,7 @@
         "@types/react-dom": "^19.2.3",
         "astro": "6.3.3",
         "better-sqlite3": "^12.10.0",
+        "canonical-json": "^0.4.0",
         "dom-to-image-more": "^3.7.2",
         "drizzle-graphql": "^0.8.5",
         "drizzle-orm": "^0.45.2",
@@ -711,6 +712,8 @@
     "camelcase-css": ["camelcase-css@2.0.1", "", {}, "sha512-QOSvevhslijgYwRx6Rv7zKdMF8lbRmx+uQGx2+vDc+KI/eBnsy9kit5aj23AgGu3pa4t9AgwbnXWqS+iOY+2aA=="],
 
     "caniuse-lite": ["caniuse-lite@1.0.30001751", "", {}, "sha512-A0QJhug0Ly64Ii3eIqHu5X51ebln3k4yTUkY1j8drqpWHVreg/VLijN48cZ1bYPiqOQuqpkIKnzr/Ul8V+p6Cw=="],
+
+    "canonical-json": ["canonical-json@0.4.0", "", { "bin": { "canonical-json": "canonical-json.js" } }, "sha512-tjdV5Z1ZYX7JfotmcutLzAiwzw0XiViJB9smqVM7sIoOp+IdqRZcnqfFLzHdb9/baDzkNI0ECfLoMt+EBOYx4A=="],
 
     "ccount": ["ccount@2.0.1", "", {}, "sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg=="],
 

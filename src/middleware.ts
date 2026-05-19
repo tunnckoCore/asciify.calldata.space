@@ -2,6 +2,7 @@ import { defineMiddleware } from "astro:middleware";
 import { getCacheHeaders } from "@/lib/cache";
 import { htmlRoute } from "@/lib/routes/html";
 import { imageRoute } from "@/lib/routes/image";
+import { svgRoute } from "@/lib/routes/svg";
 
 async function digest(value: ArrayBuffer) {
   const hash = await crypto.subtle.digest("SHA-256", value);
@@ -29,17 +30,25 @@ function shouldProcess(response: Response) {
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url } = context;
-  const formattedRoute = url.pathname.match(/^\/([^/.]+)\.(png|gif|html)$/);
+  const formattedRoute = url.pathname.match(/^\/([^/.]+)\.(png|gif|html|svg)$/);
   const response = formattedRoute
     ? formattedRoute[2] === "html"
       ? await htmlRoute({
           ...context,
           params: { ...context.params, id: formattedRoute[1] },
         })
-      : await imageRoute(
-          { ...context, params: { ...context.params, id: formattedRoute[1] } },
-          formattedRoute[2] as "png" | "gif",
-        )
+      : formattedRoute[2] === "svg"
+        ? await svgRoute({
+            ...context,
+            params: { ...context.params, id: formattedRoute[1] },
+          })
+        : await imageRoute(
+            {
+              ...context,
+              params: { ...context.params, id: formattedRoute[1] },
+            },
+            formattedRoute[2] as "png" | "gif",
+          )
     : await next();
   const ifNoneMatch = request.headers.get("if-none-match");
   const cacheHeaders = getCacheHeaders();

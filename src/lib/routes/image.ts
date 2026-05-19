@@ -1,6 +1,7 @@
 import type { APIContext } from "astro";
-import { fetchEthscriptionContent } from "@/lib/fetch";
+import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
 import { bytesToBase64 } from "../utils.ts";
+import stringify from "canonical-json";
 
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 
@@ -73,11 +74,7 @@ function detectImageFormat(bytes: Uint8Array) {
   return null;
 }
 
-export async function imageRoute(
-  ctx: APIContext,
-  fmt: "png" | "gif",
-  metadata: any = null,
-) {
+export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
   const { params, url } = ctx;
   const { id } = params;
 
@@ -134,48 +131,57 @@ export async function imageRoute(
   let result: Awaited<ReturnType<typeof renderBlockscriptImage>>;
 
   try {
-    const body = metadata
-      ? JSON.stringify({
-          ...metadata,
-          content_uri: `data:${sourceMimeType};base64,${bytesToBase64(contentBytes)}`,
-        })
-      : res.contentBody;
+    // const body = metadata
+    //   ? JSON.stringify({
+    //       ...metadata,
+    //       content_uri: `data:${sourceMimeType};base64,${bytesToBase64(contentBytes)}`,
+    //     })
+    //   : res.contentBody;
 
-    result = await renderBlockscriptImage(
-      metadata
-        ? new TextEncoder().encode(body as string)
-        : (body as ArrayBuffer),
-      {
-        cellWidth,
-        cellHeight,
-        gridWidth,
-        gridHeight,
-        background: colorParam(
-          url.searchParams.get("background") ?? url.searchParams.get("bg"),
-          "#05000B",
-        ),
-        transparentGlyph: colorParam(
-          url.searchParams.get("transparentGlyph") ??
-            url.searchParams.get("tg"),
-          "#26235D",
-        ),
-        transparentMode:
-          (url.searchParams.get("transparentMode") ??
-            url.searchParams.get("tm")) === "skip"
-            ? "skip"
-            : "dim",
-        alphaThreshold: positiveInt(
-          url.searchParams.get("alphaThreshold"),
-          12,
-          255,
-        ),
+    const metadataText = stringify({
+      ...(await fetchEthscription(id)).contentBody.result,
+      attributes: [
+        { trait_type: "Eyewear", value: "Rose-Colored Glasses" },
+        { trait_type: "Outerwear", value: "Diamond Necklace" },
+        { trait_type: "Headwear", value: "Fire" },
+        { trait_type: "Body", value: "Crescent" },
+        { trait_type: "Feathers", value: "Brown" },
+        { trait_type: "Background", value: "Purple" },
+        { trait_type: "Beak", value: "Short - Orange" },
+      ],
+    });
+    console.log({metadataText})
 
-        circle: url.searchParams.has("circle"),
-        heart: url.searchParams.has("heart"),
-        palette: url.searchParams.has("palette"),
-        outputFormat,
-      },
-    );
+    result = await renderBlockscriptImage(res.contentBody, {
+      text: metadataText,
+      cellWidth,
+      cellHeight,
+      gridWidth,
+      gridHeight,
+      background: colorParam(
+        url.searchParams.get("background") ?? url.searchParams.get("bg"),
+        "#05000B",
+      ),
+      transparentGlyph: colorParam(
+        url.searchParams.get("transparentGlyph") ?? url.searchParams.get("tg"),
+        "#26235D",
+      ),
+      transparentMode:
+        (url.searchParams.get("transparentMode") ??
+          url.searchParams.get("tm")) === "skip"
+          ? "skip"
+          : "dim",
+      alphaThreshold: positiveInt(
+        url.searchParams.get("alphaThreshold"),
+        12,
+        255,
+      ),
+
+      circle: url.searchParams.has("circle"),
+      heart: url.searchParams.has("heart"),
+      palette: url.searchParams.has("palette"),
+      outputFormat,
+    });
   } catch (error) {
     return new Response(
       error instanceof Error ? error.stack || error.message : String(error),

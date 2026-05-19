@@ -191,32 +191,38 @@ function openEthscriptionsDb() {
   return {
     db,
     insertCollection: db.prepare(`
-      INSERT INTO collections (collection_id, name, symbol, supply)
+      INSERT INTO collections (contract_address, name, symbol, supply)
       VALUES (?, ?, ?, ?)
-      ON CONFLICT(collection_id) DO UPDATE SET
+      ON CONFLICT(contract_address) DO UPDATE SET
         name = excluded.name,
         symbol = excluded.symbol,
         supply = excluded.supply
     `),
     insertItem: db.prepare(`
-      INSERT INTO items (
-        collection_id,
+      INSERT INTO ethscriptions (
+        contract_address,
         token_id,
         ethscription_number,
         ethscription_id
       )
       VALUES (?, ?, ?, ?)
-      ON CONFLICT(collection_id, token_id) DO UPDATE SET
+      ON CONFLICT(contract_address, token_id) DO UPDATE SET
         ethscription_number = excluded.ethscription_number,
         ethscription_id = excluded.ethscription_id
     `),
     deleteItemAttributes: db.prepare(`
-      DELETE FROM item_attributes
-      WHERE collection_id = ? AND token_id = ?
+      DELETE FROM attributes
+      WHERE contract_address = ? AND token_id = ?
     `),
+    // contractAddress: text("contract_address").notNull(),
+    // tokenId: integer("token_id").notNull(),
+    // traitType: text("trait_type").notNull(),
+    // traitValue: text("trait_value").notNull(),
+    // ethscriptionNumber: integer("ethscription_number").notNull(),
+    // ethscriptionId: text("ethscription_id").notNull(),
     insertItemAttribute: db.prepare(`
-      INSERT INTO item_attributes (collection_id, token_id, trait_type, trait_value)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO attributes (contract_address, token_id, trait_type, trait_value,ethscription_number,ethscription_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `),
   };
 }
@@ -246,6 +252,8 @@ function insertRows(
           tokenId,
           attribute.traitType,
           attribute.traitValue,
+          row.ethscription_number,
+          row.ethscription_id,
         );
       }
     }
@@ -305,5 +313,5 @@ export async function fetchCollection(collectionName: CollectionName | string) {
   return { collection: collection.name, fetched, outputPath, dbPath: DB_PATH };
 }
 
-await fetchCollection("JOINT");
-await fetchCollection("PIGGIES");
+await fetchCollection("nerd");
+// await fetchCollection("PIGGIES");

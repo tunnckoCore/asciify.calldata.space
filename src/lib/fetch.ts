@@ -71,11 +71,12 @@ export async function typedFetcher<T>(
   }
 
   if (bin) {
+    const body = await response.arrayBuffer();
     const resp = {
       headers: response.headers,
-      contentBody: await response.arrayBuffer(),
+      contentBody: body,
       contentType: response.headers.get("content-type"),
-      contentLength: response.headers.get("content-length") || "",
+      contentLength: String(body.byteLength),
     };
 
     setInMemoryCachedValue(url, resp);
@@ -83,11 +84,12 @@ export async function typedFetcher<T>(
     return resp;
   }
 
+  const json = await response.json();
   const resp = {
     headers: response.headers,
-    contentBody: (await response.json()) as T,
+    contentBody: json as T,
     contentType: response.headers.get("content-type"),
-    contentLength: response.headers.get("content-length") || "",
+    contentLength: String(JSON.stringify(json).length),
   };
 
   setInMemoryCachedValue(url, resp);
@@ -141,11 +143,11 @@ export async function fetchEthscription(id: EthscriptionId) {
   );
   ethUrl.searchParams.set(
     "with",
-    "content_uri,ethscription_number,current_owner,previous_owner",
+    "ethscription_number,current_owner,previous_owner",
   );
   ethUrl.searchParams.set(
     "only",
-    "block_number,block_hash,block_datetime,transaction_hash,transaction_index,transaction_value,transaction_fee,gas_price,gas_used,creator,receiver,media_type,media_subtype,content_type,content_sha,content_uri,ethscription_number,current_owner,previous_owner",
+    "block_number,block_hash,block_datetime,transaction_hash,transaction_index,transaction_value,transaction_fee,gas_price,gas_used,creator,receiver,media_type,media_subtype,content_type,content_sha,ethscription_number,current_owner,previous_owner",
   );
 
   const resp = await typedFetcher<{
@@ -156,5 +158,39 @@ export async function fetchEthscription(id: EthscriptionId) {
 
   return resp;
 }
+
+// const res = await fetchEthscription('348295');
+// const text = {...res.contentBody.result, "attributes": [
+//       {
+//         "trait_type": "Eyewear",
+//         "value": "Rose-Colored Glasses"
+//       },
+//       {
+//         "trait_type": "Outerwear",
+//         "value": "Diamond Necklace"
+//       },
+//       {
+//         "trait_type": "Headwear",
+//         "value": "Fire"
+//       },
+//       {
+//         "trait_type": "Body",
+//         "value": "Crescent"
+//       },
+//       {
+//         "trait_type": "Feathers",
+//         "value": "Brown"
+//       },
+//       {
+//         "trait_type": "Background",
+//         "value": "Purple"
+//       },
+//       {
+//         "trait_type": "Beak",
+//         "value": "Short - Orange"
+//       }
+//     ],}
+
+// console.log(text)
 
 // https://mainnet.api.calldata.space/ethscriptions/1092558?with=content_uri,ethscription_number,current_owner,previous_owner&only=block_number,block_hash,block_datetime,transaction_hash,transaction_index,transaction_value,transaction_fee,gas_price,gas_used,creator,receiver,media_type,media_subtype,content_type,content_sha,content_uri,ethscription_number,current_owner,previous_owner,

@@ -149,6 +149,12 @@ export const collections = [
     supply: 1366,
     contract: "0x5D5ebc7BffB886e94a09a757f81975Ee300aab92",
   },
+  {
+    name: "Nerdies",
+    symbol: "NERD",
+    supply: 2023,
+    contract: "0xec450D1a7D3c53C0505Ae7a0Eca0caB40d996326",
+  },
 ] as const;
 
 export default collections;
