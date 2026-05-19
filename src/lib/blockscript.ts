@@ -18,6 +18,7 @@ export type RenderBlockscriptOptions = {
   palette?: boolean;
   outputFormat?: "png" | "gif";
   text?: string;
+  glyphScale?: number;
 };
 
 export type RenderBlockscriptResult = {
@@ -878,6 +879,7 @@ export const DEFAULT_BLOCKSCRIPT_OPTIONS = {
   palette: true,
   outputFormat: "png",
   text: "",
+  glyphScale: 1,
 } satisfies Required<RenderBlockscriptOptions>;
 
 function parseHexColor(value: string): Rgb {
@@ -1176,11 +1178,18 @@ function stampGlyph(
   left: number,
   top: number,
   color: Rgb,
+  cellWidth: number,
+  cellHeight: number,
+  glyphScale: number,
 ) {
-  for (let y = 0; y < glyph.height; y += 1) {
-    const row = glyph.rows[y] ?? "";
-    for (let x = 0; x < glyph.width; x += 1) {
-      if (row[x] !== "1") continue;
+  const drawWidth = Math.min(cellWidth, Math.max(1, Math.ceil(glyph.width * glyphScale)));
+  const drawHeight = Math.min(cellHeight, Math.max(1, Math.ceil(glyph.height * glyphScale)));
+  for (let y = 0; y < drawHeight; y += 1) {
+    const sourceY = Math.min(glyph.height - 1, Math.floor((y * glyph.height) / drawHeight));
+    const row = glyph.rows[sourceY] ?? "";
+    for (let x = 0; x < drawWidth; x += 1) {
+      const sourceX = Math.min(glyph.width - 1, Math.floor((x * glyph.width) / drawWidth));
+      if (row[sourceX] !== "1") continue;
       const destIndex = ((top + y) * outputWidth + left + x) * 4;
       output[destIndex] = color.r;
       output[destIndex + 1] = color.g;
@@ -1349,6 +1358,9 @@ export async function renderBlockscriptImage(
           x * resolvedOptions.cellWidth,
           y * resolvedOptions.cellHeight,
           color as Rgb,
+          resolvedOptions.cellWidth,
+          resolvedOptions.cellHeight,
+          resolvedOptions.glyphScale,
         );
       }
     }

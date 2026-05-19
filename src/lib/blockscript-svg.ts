@@ -7,6 +7,9 @@ import {
 // 0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a
 type Rgb = { r: number; g: number; b: number };
 
+const DEFAULT_HIGHSCRIPT_SIZE = 6
+const DEFAULT_TEXT_FONT_SIZE = 5
+
 export type RenderBlockscriptSvgOptions = Omit<
   RenderBlockscriptOptions,
   "palette" | "outputFormat"
@@ -101,10 +104,10 @@ export async function renderBlockscriptSvg(
   const gridWidth = requestedGridWidth;
   const usesHighBlockscript = Boolean(merged.fontUrl);
   const textCoordinateScale = usesHighBlockscript ? 4 : 1;
-  const highscriptFontSize = merged.cellHeight + 6;
+  const highscriptFontSize = merged.cellHeight + DEFAULT_HIGHSCRIPT_SIZE;
   const highscriptPitch = highscriptFontSize * 0.85;
   const outputWidth = requestedGridWidth * merged.cellWidth;
-  const fallbackFontSize = merged.cellHeight + 5;
+  const fallbackFontSize = merged.cellHeight + DEFAULT_TEXT_FONT_SIZE;
   const fallbackLineStep = fallbackFontSize;
   const effectiveLineStep = usesHighBlockscript
     ? highscriptPitch

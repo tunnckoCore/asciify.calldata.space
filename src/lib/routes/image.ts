@@ -5,6 +5,9 @@ import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
 
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 
+const DEFAULT_CELL_SIZE = 8;
+const DEFAULT_RESO_SIZE = 352;
+
 function positiveInt(value: string | null, fallback: number, max = 4096) {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
@@ -105,9 +108,11 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
     return ctx.redirect(`/${id}.${canonicalFormat}`);
   }
 
-  const cellWidth = positiveInt(url.searchParams.get("cellWidth"), 8, 64);
-  const cellHeight = positiveInt(url.searchParams.get("cellHeight"), 8, 64);
-  const requestedSize = positiveInt(url.searchParams.get("size"), 336);
+  const cWidth = url.searchParams.get("cell") ?? url.searchParams.get("cellWidth")
+  const cHeight = url.searchParams.get("cell") ?? url.searchParams.get("cellHeight")
+  const cellWidth = positiveInt(cWidth, DEFAULT_CELL_SIZE, 64);
+  const cellHeight = positiveInt(cHeight, DEFAULT_CELL_SIZE, 64);
+  const requestedSize = positiveInt(url.searchParams.get("size"), DEFAULT_RESO_SIZE);
   const defaultGridWidth = Math.max(1, Math.floor(requestedSize / cellWidth));
   const defaultGridHeight = Math.max(1, Math.floor(requestedSize / cellHeight));
   const grid = url.searchParams.get("grid");
@@ -150,17 +155,17 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
       gridHeight,
       background: colorParam(
         url.searchParams.get("background") ?? url.searchParams.get("bg"),
-        "#05000B",
+        "#000",
       ),
       transparentGlyph: colorParam(
         url.searchParams.get("transparentGlyph") ?? url.searchParams.get("tg"),
-        "#26235D",
+        "#fff",
       ),
       transparentMode:
         (url.searchParams.get("transparentMode") ??
-          url.searchParams.get("tm")) === "skip"
-          ? "skip"
-          : "dim",
+          url.searchParams.get("tm")) !== "skip"
+          ? "dim"
+          : "skip",
       alphaThreshold: positiveInt(
         url.searchParams.get("alphaThreshold"),
         12,
