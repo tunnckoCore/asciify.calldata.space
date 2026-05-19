@@ -22,7 +22,9 @@ function shouldProcess(response: Response) {
   if (!response.body) return false;
   if (response.status < 200 || response.status >= 300) return false;
   const contentType = response.headers.get("content-type") ?? "";
-  return /^(image\/|text\/|application\/json|application\/xml|application\/javascript)/.test(contentType);
+  return /^(image\/|text\/|application\/json|application\/xml|application\/javascript)/.test(
+    contentType,
+  );
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
@@ -30,7 +32,10 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const formattedRoute = url.pathname.match(/^\/([^/.]+)\.(png|gif|html)$/);
   const response = formattedRoute
     ? formattedRoute[2] === "html"
-      ? await htmlRoute({ ...context, params: { ...context.params, id: formattedRoute[1] } })
+      ? await htmlRoute({
+          ...context,
+          params: { ...context.params, id: formattedRoute[1] },
+        })
       : await imageRoute(
           { ...context, params: { ...context.params, id: formattedRoute[1] } },
           formattedRoute[2] as "png" | "gif",

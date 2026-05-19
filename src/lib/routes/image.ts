@@ -1,5 +1,6 @@
 import type { APIContext } from "astro";
 import { fetchEthscriptionContent } from "@/lib/fetch";
+import { bytesToBase64 } from "../utils.ts";
 
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 
@@ -10,7 +11,73 @@ function positiveInt(value: string | null, fallback: number, max = 4096) {
   return Math.min(parsed, max);
 }
 
-export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
+function colorParam(value: string | null, fallback: string) {
+  if (!value) return fallback;
+  const clean = value.trim().replace(/^#/, "");
+  return /^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(clean) ? `#${clean}` : value;
+}
+
+function pngHasChunk(bytes: Uint8Array, chunkName: string) {
+  const needle = new TextEncoder().encode(chunkName);
+  for (let index = 8; index <= bytes.length - 8; index += 1) {
+    if (
+      bytes[index] === needle[0] &&
+      bytes[index + 1] === needle[1] &&
+      bytes[index + 2] === needle[2] &&
+      bytes[index + 3] === needle[3]
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function looksLikeSvg(bytes: Uint8Array) {
+  const text = new TextDecoder("utf-8", { fatal: false })
+    .decode(bytes.subarray(0, Math.min(bytes.length, 1024)))
+    .trimStart()
+    .toLowerCase();
+  return (
+    text.startsWith("<svg") ||
+    (text.startsWith("<?xml") && text.includes("<svg"))
+  );
+}
+
+function detectImageFormat(bytes: Uint8Array) {
+  if (looksLikeSvg(bytes)) return "svg";
+
+  if (
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47 &&
+    bytes[4] === 0x0d &&
+    bytes[5] === 0x0a &&
+    bytes[6] === 0x1a &&
+    bytes[7] === 0x0a
+  ) {
+    return pngHasChunk(bytes, "acTL") ? "apng" : "png";
+  }
+
+  if (
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38 &&
+    (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+    bytes[5] === 0x61
+  ) {
+    return "gif";
+  }
+
+  return null;
+}
+
+export async function imageRoute(
+  ctx: APIContext,
+  fmt: "png" | "gif",
+  metadata: any = null,
+) {
   const { params, url } = ctx;
   const { id } = params;
 
@@ -18,16 +85,29 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
     return new Response("Invalid ID", { status: 400 });
   }
 
-  const content = await fetchEthscriptionContent(id);
+  const res = await fetchEthscriptionContent(id);
 
-  if (!content.contentType?.startsWith("image/")) {
-    return new Response("Not an image", { status: 415 });
+  const contentBytes = new Uint8Array(res.contentBody);
+  const actualInputSourceFormat = detectImageFormat(contentBytes);
+
+  if (!actualInputSourceFormat) {
+    return new Response("Not a supported image", { status: 415 });
   }
-  const normalizedContentType = content.contentType.toLowerCase();
-  const outputFmt = normalizedContentType.includes("gif") ? "gif" : "png";
 
-  if (fmt !== outputFmt) {
-    return ctx.redirect(`/${id}.${outputFmt}`);
+  const canonicalFormat = actualInputSourceFormat === "gif" ? "gif" : "png";
+  const outputFormat =
+    actualInputSourceFormat === "gif" || actualInputSourceFormat === "apng"
+      ? "gif"
+      : "png";
+  const sourceMimeType =
+    actualInputSourceFormat === "svg"
+      ? "image/svg+xml"
+      : actualInputSourceFormat === "apng"
+        ? "image/png"
+        : `image/${actualInputSourceFormat}`;
+
+  if (fmt !== canonicalFormat) {
+    return ctx.redirect(`/${id}.${canonicalFormat}`);
   }
 
   const cellWidth = positiveInt(url.searchParams.get("cellWidth"), 8, 64);
@@ -35,36 +115,79 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
   const requestedSize = positiveInt(url.searchParams.get("size"), 336);
   const defaultGridWidth = Math.max(1, Math.floor(requestedSize / cellWidth));
   const defaultGridHeight = Math.max(1, Math.floor(requestedSize / cellHeight));
-  const gridWidth = positiveInt(url.searchParams.get("gridWidth"), defaultGridWidth, 512);
-  const gridHeight = positiveInt(url.searchParams.get("gridHeight"), defaultGridHeight, 512);
+  const grid = url.searchParams.get("grid");
+  const gridWidth = positiveInt(
+    grid ?? url.searchParams.get("gridWidth"),
+    defaultGridWidth,
+    768,
+  );
+  const gridHeight = positiveInt(
+    grid ?? url.searchParams.get("gridHeight"),
+    defaultGridHeight,
+    768,
+  );
 
-  const { render } = await import("../../../blockscript-ascii-standalone.mjs");
-  let result;
+  const mergedQs = new URLSearchParams(url.searchParams);
+  mergedQs.set("with", "ethscription_number,content_uri");
+
+  const { renderBlockscriptImage } = await import("../blockscript.ts");
+  let result: Awaited<ReturnType<typeof renderBlockscriptImage>>;
+
   try {
-    result = await render({
-      input: Buffer.from(content.contentBody),
-      output: null,
-      cellWidth,
-      cellHeight,
-      gridWidth,
-      gridHeight,
-      background: url.searchParams.get("background") ?? "#05000B",
-      transparentGlyph: url.searchParams.get("transparentGlyph") ?? "#26235D",
-      transparentMode: url.searchParams.get("transparentMode") === "skip" ? "skip" : "dim",
-      alphaThreshold: positiveInt(url.searchParams.get("alphaThreshold"), 12, 255),
-      circle: url.searchParams.has("circle"),
-      heart: url.searchParams.has("heart"),
-      palette: url.searchParams.has("palette"),
-    });
-  } catch (error) {
-    return new Response(error instanceof Error ? error.stack || error.message : String(error), {
-      status: 500,
-      headers: {
-        "content-type": "text/plain; charset=utf-8",
-        "x-ethscription-id": id,
-        "x-asciify-route": `image/${fmt}`,
+    const body = metadata
+      ? JSON.stringify({
+          ...metadata,
+          content_uri: `data:${sourceMimeType};base64,${bytesToBase64(contentBytes)}`,
+        })
+      : res.contentBody;
+
+    result = await renderBlockscriptImage(
+      metadata
+        ? new TextEncoder().encode(body as string)
+        : (body as ArrayBuffer),
+      {
+        cellWidth,
+        cellHeight,
+        gridWidth,
+        gridHeight,
+        background: colorParam(
+          url.searchParams.get("background") ?? url.searchParams.get("bg"),
+          "#05000B",
+        ),
+        transparentGlyph: colorParam(
+          url.searchParams.get("transparentGlyph") ??
+            url.searchParams.get("tg"),
+          "#26235D",
+        ),
+        transparentMode:
+          (url.searchParams.get("transparentMode") ??
+            url.searchParams.get("tm")) === "skip"
+            ? "skip"
+            : "dim",
+        alphaThreshold: positiveInt(
+          url.searchParams.get("alphaThreshold"),
+          12,
+          255,
+        ),
+
+        circle: url.searchParams.has("circle"),
+        heart: url.searchParams.has("heart"),
+        palette: url.searchParams.has("palette"),
+        outputFormat,
       },
-    });
+    );
+  } catch (error) {
+    return new Response(
+      error instanceof Error ? error.stack || error.message : String(error),
+      {
+        status: 500,
+        headers: {
+          "content-type": "text/plain; charset=utf-8",
+          "x-ethscription-id": id,
+          "x-asciify-route": `image/${fmt}`,
+        },
+      },
+    );
   }
 
   const body = new Uint8Array(result.image ?? result.png);
@@ -72,7 +195,7 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
   return new Response(body, {
     status: 200,
     headers: {
-      "content-type": result.mimeType ?? "image/png",
+      "content-type": result.mimeType,
       "x-ethscription-id": id,
       "x-blockscript-grid": `${result.gridWidth}x${result.gridHeight}`,
       "x-blockscript-size": `${result.outputWidth}x${result.outputHeight}`,

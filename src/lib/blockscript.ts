@@ -1,34 +1,38 @@
-/*
-  Pixel-perfect High Blockscript ASCII renderer.
-
-  What it does:
-  - Reads an image from a path, data URI, base64 string, @text-file, or stdin.
-  - Turns the exact image bytes into a data URI text stream when the input is a file.
-  - Renders one source pixel as one repeated data-URI character glyph.
-  - Colors each glyph from that source pixel.
-  - Uses embedded trimmed High Blockscript glyph masks, so this file does not need
-    the InscriBurner repo assets.
-
-  Install:
-    npm install sharp
-
-  Run:
-    node blockscript-ascii-standalone.mjs --input ./mfpurr#5094.png --output ./mfpurr-blockscript.png
-
-  Useful extras:
-    node blockscript-ascii-standalone.mjs \
-      --input ./mfpurr#5094.png \
-      --output ./mfpurr-blockscript.png \
-      --source-data-uri-output ./mfpurr.datauri.txt \
-      --output-data-uri ./mfpurr-blockscript.datauri.txt
-*/
-
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
-import process from "node:process";
 import sharp from "sharp";
 
-const GLYPH_ROWS = Object.freeze({
+type Rgb = { r: number; g: number; b: number };
+
+export type RenderBlockscriptOptions = {
+  size?: number;
+  cellWidth?: number;
+  cellHeight?: number;
+  sourceScale?: number | null;
+  gridWidth?: number | null;
+  gridHeight?: number | null;
+  background?: string | Rgb;
+  transparentGlyph?: string | Rgb;
+  transparentMode?: "dim" | "skip";
+  alphaThreshold?: number;
+  circle?: boolean;
+  heart?: boolean;
+  palette?: boolean;
+  outputFormat?: "png" | "gif";
+};
+
+export type RenderBlockscriptResult = {
+  image: Buffer;
+  png: Buffer;
+  mimeType: "image/png" | "image/gif";
+  sourceWidth: number;
+  sourceHeight: number;
+  gridWidth: number;
+  gridHeight: number;
+  outputWidth: number;
+  outputHeight: number;
+  pages: number;
+};
+
+const GLYPH_ROWS: Readonly<Record<string, readonly string[]>> = Object.freeze({
   "!": [
     "1111111",
     "1000001",
@@ -853,42 +857,27 @@ const GLYPH_ROWS = Object.freeze({
   ],
 });
 
-const DEFAULT_OUTPUT = "blockscript-ascii.png";
 const DEFAULT_BACKGROUND = "#05000B";
 const DEFAULT_TRANSPARENT_GLYPH = "#26235D";
 
-function usage() {
-  console.log(`Usage:
-  node blockscript-ascii-standalone.mjs --input <image-path|data-uri|base64|@text-file> [options]
+export const DEFAULT_BLOCKSCRIPT_OPTIONS = {
+  size: 336,
+  cellWidth: 8,
+  cellHeight: 8,
+  sourceScale: null,
+  gridWidth: null,
+  gridHeight: null,
+  background: DEFAULT_BACKGROUND,
+  transparentGlyph: DEFAULT_TRANSPARENT_GLYPH,
+  transparentMode: "dim",
+  alphaThreshold: 12,
+  circle: false,
+  heart: false,
+  palette: true,
+  outputFormat: "png",
+} satisfies Required<RenderBlockscriptOptions>;
 
-Options:
-  --output, -o <path>              Output PNG. Default: ${DEFAULT_OUTPUT}
-  --source-data-uri-output <path>  Write the exact source data URI text used for glyphs.
-  --output-data-uri <path>         Write the rendered PNG as a data URI.
-  --size <n>                       Target output size. Default: 336.
-  --cell-width <n>                 Cell pitch width. Default: 8 (7px glyph + 1px spacer).
-  --cell-height <n>                Cell pitch height. Default: 8 (7px glyph + 1px spacer).
-  --source-scale <n>               Nearest-neighbor source pixel multiplier. Overrides --size.
-  --grid-width <n>                 Override sampled grid width.
-  --grid-height <n>                Override sampled grid height.
-  --background <hex>               Opaque background. Default: ${DEFAULT_BACKGROUND}
-  --transparent-glyph <hex>        Glyph color for transparent source pixels. Default: ${DEFAULT_TRANSPARENT_GLYPH}
-  --transparent-mode <dim|skip>    Draw or skip transparent source pixels. Default: dim.
-  --alpha-threshold <0-255>        Alpha below this is transparent. Default: 12.
-  --circle                         Clip output to a transparent circle.
-  --heart                          Clip output to a transparent heart.
-  --palette                        Encode PNG output as palette/PaletteAlpha.
-  --no-palette                     Encode PNG output as truecolor RGBA.
-  --help, -h
-
-Input notes:
-  - For an image path, the script builds data:<mime>;base64,... from that exact file.
-  - For a data URI text file, pass @file.txt to preserve that exact text stream.
-  - One source pixel becomes one glyph. The data URI text repeats until the grid is filled.
-`);
-}
-
-function parseHexColor(value) {
+function parseHexColor(value: string): Rgb {
   const clean = String(value).trim().replace(/^#/, "");
   const expanded = /^[0-9a-fA-F]{3}$/.test(clean)
     ? clean
@@ -906,224 +895,231 @@ function parseHexColor(value) {
   };
 }
 
-function parsePositiveInteger(name, value) {
-  const parsed = Number.parseInt(value, 10);
-  if (
-    !Number.isFinite(parsed) ||
-    parsed <= 0 ||
-    String(parsed) !== String(value).trim()
-  ) {
-    throw new Error(`${name} must be a positive integer`);
-  }
-  return parsed;
-}
-
-function parseIntegerInRange(name, value, min, max) {
-  const parsed = Number.parseInt(value, 10);
-  if (
-    !Number.isFinite(parsed) ||
-    parsed < min ||
-    parsed > max ||
-    String(parsed) !== String(value).trim()
-  ) {
-    throw new Error(`${name} must be an integer from ${min} to ${max}`);
-  }
-  return parsed;
-}
-
-function parseArgs(argv) {
-  const options = {
-    input: null,
-    output: path.resolve(DEFAULT_OUTPUT),
-    sourceDataUriOutput: null,
-    outputDataUri: null,
-    size: 336,
-    cellWidth: 8,
-    cellHeight: 8,
-    sourceScale: null,
-    gridWidth: null,
-    gridHeight: null,
-    background: parseHexColor(DEFAULT_BACKGROUND),
-    transparentGlyph: parseHexColor(DEFAULT_TRANSPARENT_GLYPH),
-    transparentMode: "dim",
-    alphaThreshold: 12,
-    circle: false,
-    heart: false,
-    palette: true,
-  };
-
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
-    const next = () => {
-      const value = argv[index + 1];
-      if (!value) throw new Error(`${arg} requires a value`);
-      index += 1;
-      return value;
-    };
-
-    switch (arg) {
-      case "--help":
-      case "-h":
-        usage();
-        process.exit(0);
-        break;
-      case "--input":
-      case "-i":
-        options.input = next();
-        break;
-      case "--output":
-      case "-o":
-        options.output = path.resolve(next());
-        break;
-      case "--source-data-uri-output":
-        options.sourceDataUriOutput = path.resolve(next());
-        break;
-      case "--output-data-uri":
-        options.outputDataUri = path.resolve(next());
-        break;
-      case "--size":
-        options.size = parsePositiveInteger(arg, next());
-        break;
-      case "--cell-width":
-        options.cellWidth = parsePositiveInteger(arg, next());
-        break;
-      case "--cell-height":
-        options.cellHeight = parsePositiveInteger(arg, next());
-        break;
-      case "--source-scale":
-        options.sourceScale = parsePositiveInteger(arg, next());
-        break;
-      case "--grid-width":
-        options.gridWidth = parsePositiveInteger(arg, next());
-        break;
-      case "--grid-height":
-        options.gridHeight = parsePositiveInteger(arg, next());
-        break;
-      case "--background":
-        options.background = parseHexColor(next());
-        break;
-      case "--transparent-glyph":
-        options.transparentGlyph = parseHexColor(next());
-        break;
-      case "--transparent-mode": {
-        const value = next();
-        if (value !== "dim" && value !== "skip")
-          throw new Error("--transparent-mode must be dim or skip");
-        options.transparentMode = value;
-        break;
-      }
-      case "--alpha-threshold":
-        options.alphaThreshold = parseIntegerInRange(arg, next(), 0, 255);
-        break;
-      case "--circle":
-        options.circle = true;
-        break;
-      case "--heart":
-        options.heart = true;
-        break;
-      case "--palette":
-        options.palette = true;
-        break;
-      case "--no-palette":
-        options.palette = false;
-        break;
-      default:
-        if (arg.startsWith("-")) throw new Error(`Unknown option: ${arg}`);
-        if (options.input)
-          throw new Error(`Unexpected positional argument: ${arg}`);
-        options.input = arg;
-        break;
-    }
-  }
-
-  return options;
-}
-
-async function readStdinText() {
-  const chunks = [];
-  for await (const chunk of process.stdin) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-  return Buffer.concat(chunks).toString("utf8").trim();
-}
-
-function decodeDataUri(value) {
-  const match = String(value)
-    .trim()
-    .match(/^data:([^,]*?),(.*)$/s);
-  if (!match) return null;
-  const metadata = match[1] ?? "";
-  const payload = match[2] ?? "";
-  if (metadata.split(";").some((part) => part.toLowerCase() === "base64")) {
-    return Buffer.from(payload.replace(/\s+/g, ""), "base64");
-  }
-  return Buffer.from(decodeURIComponent(payload), "utf8");
-}
-
-function mimeFromPath(filePath) {
-  const ext = path.extname(filePath).toLowerCase();
-  if (ext === ".png") return "image/png";
-  if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
-  if (ext === ".webp") return "image/webp";
-  if (ext === ".gif") return "image/gif";
-  if (ext === ".svg") return "image/svg+xml";
-  return "application/octet-stream";
-}
-
-async function resolveInputSource(input) {
-  if (
-    Buffer.isBuffer(input) ||
-    input instanceof Uint8Array ||
-    input instanceof ArrayBuffer
-  ) {
-    const buffer = Buffer.from(input);
-    return {
-      buffer,
-      text: `data:application/octet-stream;base64,${buffer.toString("base64")}`,
-    };
-  }
-
-  const rawInput = input ?? (await readStdinText());
-  const trimmed = String(rawInput).trim();
-  if (!trimmed) {
+function resolveInputSource(input: Uint8Array | ArrayBuffer) {
+  if (!(input instanceof Uint8Array || input instanceof ArrayBuffer)) {
     throw new Error(
-      "Provide --input as an image path, data URI, base64 string, @text-file, or stdin text",
+      "renderBlockscriptImage expects image bytes as Uint8Array or ArrayBuffer",
     );
   }
 
-  if (trimmed.startsWith("@")) {
-    const text = await readFile(path.resolve(trimmed.slice(1)), "utf8");
-    const dataUriBuffer = decodeDataUri(text);
-    if (dataUriBuffer) {
-      return { buffer: dataUriBuffer, text: text.trim() };
-    }
-    const sourceText = text.replace(/\s+/g, "");
-    return { buffer: Buffer.from(sourceText, "base64"), text: sourceText };
-  }
-
-  const dataUriBuffer = decodeDataUri(trimmed);
-  if (dataUriBuffer) {
-    return { buffer: dataUriBuffer, text: trimmed };
-  }
-
-  try {
-    const resolved = path.resolve(trimmed);
-    const buffer = await readFile(resolved);
-    return {
-      buffer,
-      text: `data:${mimeFromPath(resolved)};base64,${buffer.toString("base64")}`,
-    };
-  } catch {
-    const sourceText = trimmed.replace(/\s+/g, "");
-    return { buffer: Buffer.from(sourceText, "base64"), text: sourceText };
-  }
+  const buffer =
+    input instanceof ArrayBuffer
+      ? Buffer.from(input)
+      : Buffer.from(input.buffer, input.byteOffset, input.byteLength);
+  return {
+    buffer,
+    text: `data:application/octet-stream;base64,${buffer.toString("base64")}`,
+  };
 }
 
-function clampByte(value) {
+const PNG_SIGNATURE = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
+
+type PngChunk = { type: string; data: Buffer; raw: Buffer };
+type ApngFrame = {
+  png: Buffer;
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+  delay: number;
+  dispose: number;
+  blend: number;
+};
+
+function crc32(buffer: Buffer) {
+  let crc = 0xffffffff;
+  for (const byte of buffer) {
+    crc ^= byte;
+    for (let index = 0; index < 8; index += 1) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function makeChunk(type: string, data: Buffer) {
+  const typeBuffer = Buffer.from(type, "ascii");
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length, 0);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([typeBuffer, data])), 0);
+  return Buffer.concat([length, typeBuffer, data, crc]);
+}
+
+function parsePngChunks(buffer: Buffer): PngChunk[] {
+  if (!buffer.subarray(0, 8).equals(PNG_SIGNATURE)) return [];
+  const chunks: PngChunk[] = [];
+  let offset = 8;
+  while (offset + 12 <= buffer.length) {
+    const length = buffer.readUInt32BE(offset);
+    const type = buffer.subarray(offset + 4, offset + 8).toString("ascii");
+    const data = buffer.subarray(offset + 8, offset + 8 + length);
+    const raw = buffer.subarray(offset, offset + 12 + length);
+    chunks.push({ type, data, raw });
+    offset += 12 + length;
+    if (type === "IEND") break;
+  }
+  return chunks;
+}
+
+function makeFramePng(
+  ihdr: Buffer,
+  prefixChunks: PngChunk[],
+  frame: { width: number; height: number; dataParts: Buffer[] },
+) {
+  const frameIhdr = Buffer.from(ihdr);
+  frameIhdr.writeUInt32BE(frame.width, 0);
+  frameIhdr.writeUInt32BE(frame.height, 4);
+  return Buffer.concat([
+    PNG_SIGNATURE,
+    makeChunk("IHDR", frameIhdr),
+    ...prefixChunks.map((chunk) => chunk.raw),
+    ...frame.dataParts.map((part) => makeChunk("IDAT", part)),
+    makeChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+function extractApngFrames(buffer: Buffer): ApngFrame[] | null {
+  const chunks = parsePngChunks(buffer);
+  if (!chunks.some((chunk) => chunk.type === "acTL")) return null;
+  const ihdr = chunks.find((chunk) => chunk.type === "IHDR")?.data;
+  if (!ihdr) return null;
+  const prefixChunks = chunks.filter(
+    (chunk) =>
+      !["IHDR", "IEND", "acTL", "fcTL", "fdAT", "IDAT"].includes(chunk.type),
+  );
+  const frames: Array<{
+    width: number;
+    height: number;
+    x: number;
+    y: number;
+    delay: number;
+    dispose: number;
+    blend: number;
+    dataParts: Buffer[];
+  }> = [];
+  let current: (typeof frames)[number] | null = null;
+
+  for (const chunk of chunks) {
+    if (chunk.type === "fcTL") {
+      current = {
+        width: chunk.data.readUInt32BE(4),
+        height: chunk.data.readUInt32BE(8),
+        x: chunk.data.readUInt32BE(12),
+        y: chunk.data.readUInt32BE(16),
+        delay: Math.max(
+          10,
+          Math.round(
+            (chunk.data.readUInt16BE(20) /
+              (chunk.data.readUInt16BE(22) || 100)) *
+              1000,
+          ),
+        ),
+        dispose: chunk.data[24] ?? 0,
+        blend: chunk.data[25] ?? 0,
+        dataParts: [],
+      };
+      frames.push(current);
+    } else if (chunk.type === "IDAT") {
+      if (!current) {
+        current = {
+          width: ihdr.readUInt32BE(0),
+          height: ihdr.readUInt32BE(4),
+          x: 0,
+          y: 0,
+          delay: 100,
+          dispose: 0,
+          blend: 0,
+          dataParts: [],
+        };
+        frames.push(current);
+      }
+      current.dataParts.push(chunk.data);
+    } else if (chunk.type === "fdAT" && current) {
+      current.dataParts.push(chunk.data.subarray(4));
+    }
+  }
+
+  return frames
+    .filter((frame) => frame.dataParts.length > 0)
+    .map((frame) => ({
+      ...frame,
+      png: makeFramePng(ihdr, prefixChunks, frame),
+    }));
+}
+
+async function decodeApngFrames(buffer: Buffer) {
+  const frames = extractApngFrames(buffer);
+  if (!frames?.length) return null;
+  const metadata = await sharp(buffer).metadata();
+  const width = metadata.width ?? 0;
+  const height = metadata.height ?? 0;
+  let canvas = Buffer.alloc(width * height * 4);
+  const renderedFrames: Buffer[] = [];
+
+  for (const frame of frames) {
+    const previous = Buffer.from(canvas);
+    const decoded = await sharp(frame.png).ensureAlpha().raw().toBuffer();
+    if (frame.blend === 0) {
+      for (let y = 0; y < frame.height; y += 1) {
+        const target = ((frame.y + y) * width + frame.x) * 4;
+        decoded.copy(
+          canvas,
+          target,
+          y * frame.width * 4,
+          (y + 1) * frame.width * 4,
+        );
+      }
+    } else {
+      for (let y = 0; y < frame.height; y += 1) {
+        for (let x = 0; x < frame.width; x += 1) {
+          const src = (y * frame.width + x) * 4;
+          const dst = ((frame.y + y) * width + frame.x + x) * 4;
+          const alpha = decoded[src + 3] / 255;
+          canvas[dst] = clampByte(
+            decoded[src] * alpha + canvas[dst] * (1 - alpha),
+          );
+          canvas[dst + 1] = clampByte(
+            decoded[src + 1] * alpha + canvas[dst + 1] * (1 - alpha),
+          );
+          canvas[dst + 2] = clampByte(
+            decoded[src + 2] * alpha + canvas[dst + 2] * (1 - alpha),
+          );
+          canvas[dst + 3] = clampByte(
+            decoded[src + 3] + canvas[dst + 3] * (1 - alpha),
+          );
+        }
+      }
+    }
+    renderedFrames.push(Buffer.from(canvas));
+    if (frame.dispose === 1) {
+      for (let y = 0; y < frame.height; y += 1) {
+        canvas.fill(
+          0,
+          ((frame.y + y) * width + frame.x) * 4,
+          ((frame.y + y) * width + frame.x + frame.width) * 4,
+        );
+      }
+    } else if (frame.dispose === 2) {
+      canvas = previous;
+    }
+  }
+
+  return {
+    width,
+    height,
+    frames: renderedFrames,
+    delays: frames.map((frame) => frame.delay),
+  };
+}
+
+function clampByte(value: number) {
   return Math.max(0, Math.min(255, Math.round(value)));
 }
 
-function blendOver(background, foreground, alpha) {
+function blendOver(background: Rgb, foreground: Rgb, alpha: number): Rgb {
   if (alpha >= 255) return foreground;
   if (alpha <= 0) return background;
   return {
@@ -1133,7 +1129,7 @@ function blendOver(background, foreground, alpha) {
   };
 }
 
-function buildGlyphMap(options) {
+function buildGlyphMap(options: { cellWidth: number; cellHeight: number }) {
   const byChar = new Map();
   for (const [char, rows] of Object.entries(GLYPH_ROWS)) {
     const width = Math.max(...rows.map((row) => row.length));
@@ -1154,7 +1150,14 @@ function buildGlyphMap(options) {
   return byChar;
 }
 
-function pickGlyph(glyphs, sourceText, cellIndex) {
+function pickGlyph(
+  glyphs: Map<
+    string,
+    { char: string; width: number; height: number; rows: readonly string[] }
+  >,
+  sourceText: string,
+  cellIndex: number,
+) {
   for (let offset = 0; offset < sourceText.length; offset += 1) {
     const char = sourceText[(cellIndex + offset) % sourceText.length] ?? "?";
     const glyph = glyphs.get(char);
@@ -1163,7 +1166,14 @@ function pickGlyph(glyphs, sourceText, cellIndex) {
   return glyphs.get("?") ?? [...glyphs.values()][0];
 }
 
-function stampGlyph(output, outputWidth, glyph, left, top, color) {
+function stampGlyph(
+  output: Buffer,
+  outputWidth: number,
+  glyph: { rows: readonly string[]; height: number; width: number },
+  left: number,
+  top: number,
+  color: Rgb,
+) {
   for (let y = 0; y < glyph.height; y += 1) {
     const row = glyph.rows[y] ?? "";
     for (let x = 0; x < glyph.width; x += 1) {
@@ -1177,84 +1187,115 @@ function stampGlyph(output, outputWidth, glyph, left, top, color) {
   }
 }
 
-async function writeTextFile(filePath, text) {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, text);
+function clearCell(
+  output: Buffer,
+  outputWidth: number,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+) {
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const destIndex = ((top + y) * outputWidth + left + x) * 4;
+      output[destIndex] = 0;
+      output[destIndex + 1] = 0;
+      output[destIndex + 2] = 0;
+      output[destIndex + 3] = 0;
+    }
+  }
 }
 
-export async function render(options) {
-  options = {
-    input: null,
-    output: path.resolve(DEFAULT_OUTPUT),
-    sourceDataUriOutput: null,
-    outputDataUri: null,
-    size: 336,
-    cellWidth: 8,
-    cellHeight: 8,
-    sourceScale: null,
-    gridWidth: null,
-    gridHeight: null,
-    background: parseHexColor(DEFAULT_BACKGROUND),
-    transparentGlyph: parseHexColor(DEFAULT_TRANSPARENT_GLYPH),
-    transparentMode: "dim",
-    alphaThreshold: 12,
-    circle: false,
-    heart: false,
-    palette: true,
-    ...options,
+export async function renderBlockscriptImage(
+  input: Uint8Array | ArrayBuffer,
+  options: RenderBlockscriptOptions = {},
+): Promise<RenderBlockscriptResult> {
+  const mergedOptions = { ...DEFAULT_BLOCKSCRIPT_OPTIONS, ...options };
+  const resolvedOptions = {
+    ...mergedOptions,
+    background:
+      typeof mergedOptions.background === "string"
+        ? parseHexColor(mergedOptions.background)
+        : mergedOptions.background,
+    transparentGlyph:
+      typeof mergedOptions.transparentGlyph === "string"
+        ? parseHexColor(mergedOptions.transparentGlyph)
+        : mergedOptions.transparentGlyph,
   };
-  if (typeof options.background === "string")
-    options.background = parseHexColor(options.background);
-  if (typeof options.transparentGlyph === "string")
-    options.transparentGlyph = parseHexColor(options.transparentGlyph);
 
-  const inputSource = await resolveInputSource(options.input);
+  const inputSource = resolveInputSource(input);
+  const apng = await decodeApngFrames(inputSource.buffer);
   const metadata = await sharp(inputSource.buffer).metadata();
   const isAnimatedGif = metadata.format === "gif" && (metadata.pages ?? 1) > 1;
-  const pages = isAnimatedGif ? (metadata.pages ?? 1) : 1;
-  const sourceWidth = metadata.width ?? 0;
-  const sourceHeight = isAnimatedGif
-    ? (metadata.pageHeight ?? metadata.height ?? 0)
-    : (metadata.height ?? 0);
+  const pages = apng
+    ? apng.frames.length
+    : isAnimatedGif
+      ? (metadata.pages ?? 1)
+      : 1;
+  const sourceWidth = apng ? apng.width : (metadata.width ?? 0);
+  const sourceHeight = apng
+    ? apng.height
+    : isAnimatedGif
+      ? (metadata.pageHeight ?? metadata.height ?? 0)
+      : (metadata.height ?? 0);
   if (sourceWidth <= 0 || sourceHeight <= 0) {
     throw new Error("Input image dimensions could not be read");
   }
 
-  if (options.sourceDataUriOutput) {
-    await writeTextFile(options.sourceDataUriOutput, inputSource.text);
-  }
+  const defaultGridWidth = resolvedOptions.sourceScale
+    ? sourceWidth * resolvedOptions.sourceScale
+    : Math.max(1, Math.round(resolvedOptions.size / resolvedOptions.cellWidth));
+  const defaultGridHeight = resolvedOptions.sourceScale
+    ? sourceHeight * resolvedOptions.sourceScale
+    : Math.max(
+        1,
+        Math.round(resolvedOptions.size / resolvedOptions.cellHeight),
+      );
+  const gridWidth = resolvedOptions.gridWidth ?? defaultGridWidth;
+  const gridHeight = resolvedOptions.gridHeight ?? defaultGridHeight;
+  const outputWidth = gridWidth * resolvedOptions.cellWidth;
+  const outputHeight = gridHeight * resolvedOptions.cellHeight;
+  const keepTransparentPixels =
+    !apng && !isAnimatedGif && resolvedOptions.outputFormat === "png";
+  const glyphs = buildGlyphMap(resolvedOptions);
 
-  const defaultGridWidth = options.sourceScale
-    ? sourceWidth * options.sourceScale
-    : Math.max(1, Math.round(options.size / options.cellWidth));
-  const defaultGridHeight = options.sourceScale
-    ? sourceHeight * options.sourceScale
-    : Math.max(1, Math.round(options.size / options.cellHeight));
-  const gridWidth = options.gridWidth ?? defaultGridWidth;
-  const gridHeight = options.gridHeight ?? defaultGridHeight;
-  const outputWidth = gridWidth * options.cellWidth;
-  const outputHeight = gridHeight * options.cellHeight;
-  const glyphs = buildGlyphMap(options);
-
-  const { data: sourceData } = await sharp(
-    inputSource.buffer,
-    isAnimatedGif ? { pages: -1 } : {},
-  )
-    .ensureAlpha()
-    .resize({
-      width: gridWidth,
-      height: gridHeight,
-      fit: "fill",
-      kernel: sharp.kernel.nearest,
-    })
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+  const sourceData = apng
+    ? Buffer.concat(
+        await Promise.all(
+          apng.frames.map((frame) =>
+            sharp(frame, {
+              raw: { width: sourceWidth, height: sourceHeight, channels: 4 },
+            })
+              .resize({
+                width: gridWidth,
+                height: gridHeight,
+                fit: "fill",
+                kernel: sharp.kernel.nearest,
+              })
+              .raw()
+              .toBuffer(),
+          ),
+        ),
+      )
+    : (
+        await sharp(inputSource.buffer, isAnimatedGif ? { pages: -1 } : {})
+          .ensureAlpha()
+          .resize({
+            width: gridWidth,
+            height: gridHeight,
+            fit: "fill",
+            kernel: sharp.kernel.nearest,
+          })
+          .raw()
+          .toBuffer({ resolveWithObject: true })
+      ).data;
 
   const output = Buffer.alloc(outputWidth * outputHeight * pages * 4);
   for (let index = 0; index < output.length; index += 4) {
-    output[index] = options.background.r;
-    output[index + 1] = options.background.g;
-    output[index + 2] = options.background.b;
+    const bg = resolvedOptions.background as Rgb;
+    output[index] = bg.r;
+    output[index + 1] = bg.g;
+    output[index + 2] = bg.b;
     output[index + 3] = 255;
   }
 
@@ -1265,16 +1306,27 @@ export async function render(options) {
       for (let x = 0; x < gridWidth; x += 1) {
         const sourceIndex = sourcePageOffset + (y * gridWidth + x) * 4;
         const alpha = sourceData[sourceIndex + 3] ?? 0;
+        if (alpha < resolvedOptions.alphaThreshold && keepTransparentPixels) {
+          clearCell(
+            output.subarray(outputPageOffset),
+            outputWidth,
+            x * resolvedOptions.cellWidth,
+            y * resolvedOptions.cellHeight,
+            resolvedOptions.cellWidth,
+            resolvedOptions.cellHeight,
+          );
+          continue;
+        }
         if (
-          alpha < options.alphaThreshold &&
-          options.transparentMode === "skip"
+          alpha < resolvedOptions.alphaThreshold &&
+          resolvedOptions.transparentMode === "skip"
         )
           continue;
         const color =
-          alpha < options.alphaThreshold
-            ? options.transparentGlyph
+          alpha < resolvedOptions.alphaThreshold
+            ? resolvedOptions.transparentGlyph
             : blendOver(
-                options.background,
+                resolvedOptions.background as Rgb,
                 {
                   r: sourceData[sourceIndex] ?? 0,
                   g: sourceData[sourceIndex + 1] ?? 0,
@@ -1287,15 +1339,15 @@ export async function render(options) {
           output.subarray(outputPageOffset),
           outputWidth,
           glyph,
-          x * options.cellWidth,
-          y * options.cellHeight,
-          color,
+          x * resolvedOptions.cellWidth,
+          y * resolvedOptions.cellHeight,
+          color as Rgb,
         );
       }
     }
   }
 
-  if (options.circle || options.heart) {
+  if (resolvedOptions.circle || resolvedOptions.heart) {
     const cx = (outputWidth - 1) / 2;
     const cy = (outputHeight - 1) / 2;
     const radius = Math.min(outputWidth, outputHeight) / 2;
@@ -1304,8 +1356,8 @@ export async function render(options) {
       const outputPageOffset = page * outputWidth * outputHeight * 4;
       for (let y = 0; y < outputHeight; y += 1) {
         for (let x = 0; x < outputWidth; x += 1) {
-          let inside;
-          if (options.heart) {
+          let inside: boolean;
+          if (resolvedOptions.heart) {
             const nx = ((x - cx) / radius) * 1.25;
             const ny = -((y - cy) / radius) * 1.25 + 0.18;
             const v = nx * nx + ny * ny - 1;
@@ -1323,10 +1375,10 @@ export async function render(options) {
     }
   }
 
-  let rendered;
-  let mimeType;
+  let rendered: Buffer;
+  let mimeType: "image/png" | "image/gif";
 
-  if (isAnimatedGif) {
+  if (isAnimatedGif || resolvedOptions.outputFormat === "gif") {
     const framePngs = [];
     for (let page = 0; page < pages; page += 1) {
       const frame = output.subarray(
@@ -1343,10 +1395,13 @@ export async function render(options) {
     }
 
     rendered = await sharp(framePngs, { join: { animated: true } })
-      .gif({ effort: 10, loop: metadata.loop ?? 0, delay: metadata.delay })
+      .gif({
+        effort: 10,
+        loop: metadata.loop ?? 0,
+        delay: apng?.delays ?? metadata.delay,
+      })
       .toBuffer();
     mimeType = "image/gif";
-    if (options.output) await writeFile(options.output, rendered);
   } else {
     rendered = await sharp(output, {
       raw: {
@@ -1355,24 +1410,14 @@ export async function render(options) {
         channels: 4,
       },
     })
-      .png({ palette: options.palette, effort: 10, compressionLevel: 9 })
+      .png({
+        palette: resolvedOptions.palette,
+        effort: 10,
+        compressionLevel: 9,
+      })
       .toBuffer();
     mimeType = "image/png";
-    if (options.output) await writeFile(options.output, rendered);
   }
-  if (options.outputDataUri) {
-    await writeTextFile(
-      options.outputDataUri,
-      `data:${mimeType};base64,${rendered.toString("base64")}`,
-    );
-  }
-
-  console.log(`Source: ${sourceWidth}x${sourceHeight}`);
-  console.log(`Grid: ${gridWidth}x${gridHeight} glyphs`);
-  console.log(
-    `Wrote ${options.output} (${outputWidth}x${outputHeight}, ${rendered.length} bytes)`,
-  );
-
   return {
     image: rendered,
     png: rendered,
@@ -1385,13 +1430,4 @@ export async function render(options) {
     outputHeight,
     pages,
   };
-}
-
-if (import.meta.url === `file://${process.argv[1]}`) {
-  try {
-    await render(parseArgs(process.argv.slice(2)));
-  } catch (error) {
-    console.error(error instanceof Error ? error.message : error);
-    process.exit(1);
-  }
 }

@@ -24,7 +24,7 @@ function bytesToBase64(bytes: Uint8Array): string {
   return result;
 }
 
-export const htmlRoute = async ({ params, url }: APIContext, datauri = false) => {
+export const htmlRoute = async ({ params, url }: APIContext) => {
   const { id } = params;
 
   if (!id || !idPattern.test(id)) {
@@ -38,7 +38,7 @@ export const htmlRoute = async ({ params, url }: APIContext, datauri = false) =>
 
   const finalHtml = `<html data-enum="${htmlParts.data.transaction_hash}"><head>${htmlParts.data.fontPreload}<style>${htmlParts.data.css}</style></head><body>${htmlParts.data.asciiartDiv}</body></html>`;
 
-  if (url.searchParams.has('datauri')) {
+  if (url.searchParams.has("datauri")) {
     const htmlBytes = new TextEncoder().encode(finalHtml);
     const htmlBase64 = bytesToBase64(htmlBytes);
 
@@ -49,8 +49,8 @@ export const htmlRoute = async ({ params, url }: APIContext, datauri = false) =>
         "x-ethscription-id": id,
       },
     });
-
   }
+
   return new Response(finalHtml, {
     status: 200,
     headers: {

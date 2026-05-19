@@ -7,6 +7,27 @@ import {
 } from "@/lib/styles";
 import { EthscriptionFetchError } from "@/types/ethscription";
 
+export function bytesToBase64(bytes: Uint8Array): string {
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let result = "";
+
+  for (let i = 0; i < bytes.length; i += 3) {
+    const b1 = bytes[i];
+    const b2 = bytes[i + 1];
+    const b3 = bytes[i + 2];
+
+    const bitmap = (b1 << 16) | (b2 << 8) | b3;
+
+    result += chars[(bitmap >> 18) & 63];
+    result += chars[(bitmap >> 12) & 63];
+    result += i + 1 < bytes.length ? chars[(bitmap >> 6) & 63] : "=";
+    result += i + 2 < bytes.length ? chars[bitmap & 63] : "=";
+  }
+
+  return result;
+}
+
 export async function buildHtmlParts(
   id: string,
   url: URL,
