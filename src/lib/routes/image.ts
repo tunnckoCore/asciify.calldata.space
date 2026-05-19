@@ -21,12 +21,21 @@ const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 // cell=10&size=420 - medium (15.7 KB)
 // cell=10&size=450 - big    (17.7 KB)
 
-const DEFAULT_CELL_SIZE = 9;
-const DEFAULT_RESO_SIZE = 342;
+const DEFAULT_CELL_SIZE = 8;
+const DEFAULT_SOURCE_SCALE = 1;
+const GLYPH_SCALE = 1;
+const GLYPH_GAP = 1;
 
 function positiveInt(value: string | null, fallback: number, max = 4096) {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+  return Math.min(parsed, max);
+}
+
+function positiveNumber(value: string | null, fallback: number, max = 4096) {
+  if (!value) return fallback;
+  const parsed = Number.parseFloat(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
   return Math.min(parsed, max);
 }
@@ -135,22 +144,22 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
 
   const cWidth = url.searchParams.get("cell") ?? url.searchParams.get("cellWidth")
   const cHeight = url.searchParams.get("cell") ?? url.searchParams.get("cellHeight")
-  const cellWidth = positiveInt(cWidth, DEFAULT_CELL_SIZE, 64);
-  const cellHeight = positiveInt(cHeight, DEFAULT_CELL_SIZE, 64);
-  const requestedSize = positiveInt(url.searchParams.get("size"), DEFAULT_RESO_SIZE);
-  const defaultGridWidth = Math.max(1, Math.floor(requestedSize / cellWidth));
-  const defaultGridHeight = Math.max(1, Math.floor(requestedSize / cellHeight));
+  const baseCellWidth = positiveInt(cWidth, DEFAULT_CELL_SIZE, 64);
+  const baseCellHeight = positiveInt(cHeight, DEFAULT_CELL_SIZE, 64);
+  const glyphWidth = Math.ceil((baseCellWidth - 1) * GLYPH_SCALE);
+  const glyphHeight = Math.ceil((baseCellHeight - 1) * GLYPH_SCALE);
+  const cellWidth = Math.max(1, glyphWidth + GLYPH_GAP);
+  const cellHeight = Math.max(1, glyphHeight + GLYPH_GAP);
+  const sourceScale = positiveNumber(
+    url.searchParams.get("scale") ?? url.searchParams.get("sourceScale"),
+    DEFAULT_SOURCE_SCALE,
+    16,
+  );
   const grid = url.searchParams.get("grid");
-  const gridWidth = positiveInt(
-    grid ?? url.searchParams.get("gridWidth"),
-    defaultGridWidth,
-    512,
-  );
-  const gridHeight = positiveInt(
-    grid ?? url.searchParams.get("gridHeight"),
-    defaultGridHeight,
-    512,
-  );
+  const gridWidthParam = grid ?? url.searchParams.get("gridWidth");
+  const gridHeightParam = grid ?? url.searchParams.get("gridHeight");
+  const gridWidth = gridWidthParam ? positiveInt(gridWidthParam, 1, 512) : null;
+  const gridHeight = gridHeightParam ? positiveInt(gridHeightParam, 1, 512) : null;
 
   const mergedQs = new URLSearchParams(url.searchParams);
   mergedQs.set("with", "ethscription_number,content_uri");
@@ -176,6 +185,8 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
       text: encodeHbsText(metadataJson),
       cellWidth,
       cellHeight,
+      sourceScale,
+      glyphScale: GLYPH_SCALE,
       gridWidth,
       gridHeight,
       background: colorParam(

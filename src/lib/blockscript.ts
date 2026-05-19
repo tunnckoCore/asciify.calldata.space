@@ -1438,8 +1438,14 @@ export async function renderBlockscriptImage(
     }
   }
 
-  const trimRight = Math.max(0, resolvedOptions.cellWidth - 7);
-  const trimBottom = Math.max(0, resolvedOptions.cellHeight - 7);
+  const trimRight = Math.max(
+    0,
+    resolvedOptions.cellWidth - Math.ceil(7 * resolvedOptions.glyphScale),
+  );
+  const trimBottom = Math.max(
+    0,
+    resolvedOptions.cellHeight - Math.ceil(7 * resolvedOptions.glyphScale),
+  );
   const encodedOutput = trimRightBottomEdge(
     output,
     outputWidth,
