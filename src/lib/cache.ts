@@ -34,6 +34,14 @@ type CacheValue = {
 const memoryCache = new Map<string, CacheValue>();
 
 export function getCacheHeaders() {
+  if (import.meta.env.DEV) {
+    return {
+      "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+      Pragma: "no-cache",
+      Expires: "0",
+    };
+  }
+
   return {
     "Cache-Control": `public, max-age=120, stale-while-revalidate=3600, must-revalidate`,
     "CDN-Cache-Control": `public, max-age=${CACHE_TTL_SECONDS}, immutable`,
@@ -61,6 +69,8 @@ export function getCacheKey(urlstr: string, tag = "eths") {
 }
 
 export function getInMemoryCachedValue<T>(key: string): T | undefined {
+  if (import.meta.env.DEV) return undefined;
+
   const cached = memoryCache.get(getCacheKey(key));
   if (!cached || cached.expiresAt <= Date.now()) {
     if (cached) memoryCache.delete(getCacheKey(key));
@@ -75,6 +85,8 @@ export function setInMemoryCachedValue<T>(
   value: T,
   ttlMs = CACHE_TTL_SECONDS * 1000,
 ): T {
+  if (import.meta.env.DEV) return value;
+
   memoryCache.set(getCacheKey(key), {
     expiresAt: Date.now() + ttlMs,
     value,

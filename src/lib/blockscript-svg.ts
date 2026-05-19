@@ -14,6 +14,7 @@ export type RenderBlockscriptSvgOptions = Omit<
   fontUrl?: string | null;
   imageUrl?: string;
   text?: string;
+  expandText?: boolean;
 };
 
 export type RenderBlockscriptSvgResult = {
@@ -88,23 +89,38 @@ export async function renderBlockscriptSvg(
       : merged.background;
   const inputBuffer = resolveInput(input);
 
-  const gridWidth =
+  const requestedGridWidth =
     merged.gridWidth ?? Math.max(1, Math.round(merged.size / merged.cellWidth));
-  const gridHeight =
+  const requestedGridHeight =
     merged.gridHeight ??
     Math.max(1, Math.round(merged.size / merged.cellHeight));
-  const outputWidth = gridWidth * merged.cellWidth;
+  const fullText = merged.text ?? glyphText(
+    inputBuffer,
+    requestedGridWidth * requestedGridHeight,
+  );
+  const gridWidth = requestedGridWidth;
+  const usesHighBlockscript = Boolean(merged.fontUrl);
+  const textColumns = usesHighBlockscript
+    ? Math.ceil(requestedGridWidth * 1.29)
+    : Math.ceil(requestedGridWidth * 1.65);
+  const gridHeight = merged.expandText
+    ? Math.max(requestedGridHeight, Math.ceil(fullText.length / textColumns))
+    : requestedGridHeight;
+  const outputWidth = requestedGridWidth * merged.cellWidth;
   const outputHeight = gridHeight * merged.cellHeight;
-  const text = glyphText(inputBuffer, gridWidth * gridHeight, merged.text);
+  const text = glyphText(inputBuffer, textColumns * gridHeight, merged.text);
 
   const rows: string[] = [];
   for (let y = 0; y < gridHeight; y += 1) {
     rows.push(
-      `<text x="0" y="${y * merged.cellHeight}" textLength="${outputWidth}" lengthAdjust="spacingAndGlyphs">${xmlEscape(
-        text.slice(y * gridWidth, (y + 1) * gridWidth),
-      )}</text>`,
+      y === 0
+        ? `<tspan>${xmlEscape(text.slice(0, textColumns))}</tspan>`
+        : `<tspan x="0" dy="${merged.cellHeight}">${xmlEscape(
+            text.slice(y * textColumns, (y + 1) * textColumns),
+          )}</tspan>`,
     );
   }
+  const textMarkup = `<text x="0" y="0">${rows.join("")}</text>`;
 
   const fontUrl = merged.fontUrl ? xmlEscape(merged.fontUrl) : null;
   const imageUrl = xmlEscape(merged.imageUrl ?? "");
@@ -114,14 +130,14 @@ export async function renderBlockscriptSvg(
     : merged.circle
       ? `<circle cx="${outputWidth / 2}" cy="${outputHeight / 2}" r="${Math.min(outputWidth, outputHeight) / 2}" fill="white"/>`
       : `<rect width="100%" height="100%" fill="white"/>`;
-  const image = imageUrl
-    ? `<image href="${imageUrl}" width="${outputWidth}" height="${outputHeight}" preserveAspectRatio="xMidYMid slice" mask="url(#shape-mask)"/>`
-    : "";
   const fontFace = fontUrl
     ? `@font-face{font-family:HighBlockscript;src:url('${fontUrl}') format('woff2')}`
     : "";
   const fontFamily = fontUrl ? "HighBlockscript,monospace" : "monospace";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${outputWidth}" height="${outputHeight}" viewBox="0 0 ${outputWidth} ${outputHeight}"><style>${fontFace}text{font-family:${fontFamily};font-size:${merged.cellHeight}px;dominant-baseline:hanging;text-anchor:start;white-space:pre}</style><defs><mask id="glyph-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${outputWidth}" height="${outputHeight}"><rect width="100%" height="100%" fill="black"/><g fill="white">${rows.join("")}</g></mask><mask id="shape-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${outputWidth}" height="${outputHeight}"><rect width="100%" height="100%" fill="black"/>${shapeMask}</mask></defs>${backgroundRect}<g mask="url(#glyph-mask)">${image}</g></svg>`;
+  const image = imageUrl
+    ? `<image href="${imageUrl}" width="${outputWidth}" height="${outputHeight}" preserveAspectRatio="xMidYMid slice" mask="url(#shape-mask)"/>`
+    : "";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${outputWidth}" height="${outputHeight}" viewBox="0 0 ${outputWidth} ${outputHeight}"><style>${fontFace}text{font-family:${fontFamily};font-size:${merged.cellHeight}px;dominant-baseline:hanging;text-anchor:start;white-space:pre}</style><defs><mask id="glyph-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${outputWidth}" height="${outputHeight}"><rect width="100%" height="100%" fill="black"/><g fill="white">${textMarkup}</g></mask><mask id="shape-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${outputWidth}" height="${outputHeight}"><rect width="100%" height="100%" fill="black"/>${shapeMask}</mask></defs>${backgroundRect}<g mask="url(#glyph-mask)">${image}</g></svg>`;
 
   return {
     svg,

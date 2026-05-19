@@ -1,5 +1,6 @@
 import type { APIContext } from "astro";
-import stringify from 'canonical-json'
+import stringify from "canonical-json";
+import { bech32 } from "@scure/base";
 import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
 import { renderBlockscriptSvg } from "../blockscript-svg";
 
@@ -16,6 +17,11 @@ function colorParam(value: string | null, fallback: string) {
   if (!value) return fallback;
   const clean = value.trim().replace(/^#/, "");
   return /^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(clean) ? `#${clean}` : value;
+}
+
+function encodeHbsText(json: string) {
+  const bytes = new TextEncoder().encode(json);
+  return `${bytes.byteLength}.${bech32.encode("hbs", bech32.toWords(bytes), false)}`;
 }
 
 export async function svgRoute(ctx: APIContext) {
@@ -36,29 +42,30 @@ export async function svgRoute(ctx: APIContext) {
   const gridWidth = positiveInt(
     grid ?? url.searchParams.get("gridWidth"),
     defaultGridWidth,
-    768,
+    512,
   );
   const gridHeight = positiveInt(
     grid ?? url.searchParams.get("gridHeight"),
     defaultGridHeight,
-    768,
+    512,
   );
 
   try {
-    const {content_uri, ...meta} = JSON.parse(stringify({
-      ...(await fetchEthscription(id)).contentBody.result,
-      attributes: [
-        { trait_type: "Eyewear", value: "Rose-Colored Glasses" },
-        { trait_type: "Outerwear", value: "Diamond Necklace" },
-        { trait_type: "Headwear", value: "Fire" },
-        { trait_type: "Body", value: "Crescent" },
-        { trait_type: "Feathers", value: "Brown" },
-        { trait_type: "Background", value: "Purple" },
-        { trait_type: "Beak", value: "Short - Orange" },
-      ],
-    }));
-    const metadataText = JSON.stringify({ ...meta, content_uri })
-    console.log({ metadataText })
+    const { content_uri, ...meta } = JSON.parse(
+      stringify({
+        ...(await fetchEthscription(id)).contentBody.result,
+        attributes: [
+          { trait_type: "Eyewear", value: "Rose-Colored Glasses" },
+          { trait_type: "Outerwear", value: "Diamond Necklace" },
+          { trait_type: "Headwear", value: "Fire" },
+          { trait_type: "Body", value: "Crescent" },
+          { trait_type: "Feathers", value: "Brown" },
+          { trait_type: "Background", value: "Purple" },
+          { trait_type: "Beak", value: "Short - Orange" },
+        ],
+      }),
+    );
+    const metadataText = JSON.stringify({ ...meta, content_uri });
 
     const result = await renderBlockscriptSvg(res.contentBody, {
       cellWidth,
@@ -93,8 +100,8 @@ export async function svgRoute(ctx: APIContext) {
         url.searchParams.get("imageUrl") ??
         url.searchParams.get("url") ??
         `/ethscriptions/${id}/content`,
-      // text: (await fetchEthscription("1360991")).contentBody.result.content_uri
-      text: metadataText,
+      expandText: url.searchParams.has("expandText") || url.searchParams.has("expand"),
+      text: encodeHbsText(metadataText),
     });
 
     return new Response(result.svg, {

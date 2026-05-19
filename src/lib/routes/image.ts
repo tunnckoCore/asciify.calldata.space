@@ -1,7 +1,7 @@
 import type { APIContext } from "astro";
-import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
-import { bytesToBase64 } from "../utils.ts";
 import stringify from "canonical-json";
+import { bech32 } from "@scure/base";
+import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
 
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 
@@ -16,6 +16,11 @@ function colorParam(value: string | null, fallback: string) {
   if (!value) return fallback;
   const clean = value.trim().replace(/^#/, "");
   return /^[0-9a-fA-F]{3}$|^[0-9a-fA-F]{6}$/.test(clean) ? `#${clean}` : value;
+}
+
+function encodeHbsText(json: string) {
+  const bytes = new TextEncoder().encode(json);
+  return `${bytes.byteLength}.${bech32.encode("hbs", bech32.toWords(bytes), false)}`;
 }
 
 function pngHasChunk(bytes: Uint8Array, chunkName: string) {
@@ -96,13 +101,6 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
     actualInputSourceFormat === "gif" || actualInputSourceFormat === "apng"
       ? "gif"
       : "png";
-  const sourceMimeType =
-    actualInputSourceFormat === "svg"
-      ? "image/svg+xml"
-      : actualInputSourceFormat === "apng"
-        ? "image/png"
-        : `image/${actualInputSourceFormat}`;
-
   if (fmt !== canonicalFormat) {
     return ctx.redirect(`/${id}.${canonicalFormat}`);
   }
@@ -116,12 +114,12 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
   const gridWidth = positiveInt(
     grid ?? url.searchParams.get("gridWidth"),
     defaultGridWidth,
-    768,
+    512,
   );
   const gridHeight = positiveInt(
     grid ?? url.searchParams.get("gridHeight"),
     defaultGridHeight,
-    768,
+    512,
   );
 
   const mergedQs = new URLSearchParams(url.searchParams);
@@ -131,14 +129,7 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
   let result: Awaited<ReturnType<typeof renderBlockscriptImage>>;
 
   try {
-    // const body = metadata
-    //   ? JSON.stringify({
-    //       ...metadata,
-    //       content_uri: `data:${sourceMimeType};base64,${bytesToBase64(contentBytes)}`,
-    //     })
-    //   : res.contentBody;
-
-    const metadataText = stringify({
+    const metadataJson = stringify({
       ...(await fetchEthscription(id)).contentBody.result,
       attributes: [
         { trait_type: "Eyewear", value: "Rose-Colored Glasses" },
@@ -150,10 +141,9 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
         { trait_type: "Beak", value: "Short - Orange" },
       ],
     });
-    console.log({metadataText})
 
     result = await renderBlockscriptImage(res.contentBody, {
-      text: metadataText,
+      text: encodeHbsText(metadataJson),
       cellWidth,
       cellHeight,
       gridWidth,

@@ -1,8 +1,5 @@
 import { defineMiddleware } from "astro:middleware";
 import { getCacheHeaders } from "@/lib/cache";
-import { htmlRoute } from "@/lib/routes/html";
-import { imageRoute } from "@/lib/routes/image";
-import { svgRoute } from "@/lib/routes/svg";
 
 async function digest(value: ArrayBuffer) {
   const hash = await crypto.subtle.digest("SHA-256", value);
@@ -31,25 +28,31 @@ function shouldProcess(response: Response) {
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, url } = context;
   const formattedRoute = url.pathname.match(/^\/([^/.]+)\.(png|gif|html|svg)$/);
-  const response = formattedRoute
-    ? formattedRoute[2] === "html"
-      ? await htmlRoute({
-          ...context,
-          params: { ...context.params, id: formattedRoute[1] },
-        })
-      : formattedRoute[2] === "svg"
-        ? await svgRoute({
-            ...context,
-            params: { ...context.params, id: formattedRoute[1] },
-          })
-        : await imageRoute(
-            {
-              ...context,
-              params: { ...context.params, id: formattedRoute[1] },
-            },
-            formattedRoute[2] as "png" | "gif",
-          )
-    : await next();
+  let response: Response;
+  if (!formattedRoute) {
+    response = await next();
+  } else if (formattedRoute[2] === "html") {
+    const { htmlRoute } = await import("@/lib/routes/html");
+    response = await htmlRoute({
+      ...context,
+      params: { ...context.params, id: formattedRoute[1] },
+    });
+  } else if (formattedRoute[2] === "svg") {
+    const { svgRoute } = await import("@/lib/routes/svg");
+    response = await svgRoute({
+      ...context,
+      params: { ...context.params, id: formattedRoute[1] },
+    });
+  } else {
+    const { imageRoute } = await import("@/lib/routes/image");
+    response = await imageRoute(
+      {
+        ...context,
+        params: { ...context.params, id: formattedRoute[1] },
+      },
+      formattedRoute[2] as "png" | "gif",
+    );
+  }
   const ifNoneMatch = request.headers.get("if-none-match");
   const cacheHeaders = getCacheHeaders();
 
@@ -60,12 +63,14 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const body = await response.arrayBuffer();
   const etag = `"${await digest(body)}"`;
   const headers = new Headers(response.headers);
-  headers.set("ETag", etag);
+  if (!import.meta.env.DEV) {
+    headers.set("ETag", etag);
+  }
   for (const [key, value] of Object.entries(cacheHeaders)) {
     headers.set(key, value);
   }
 
-  if (etagMatches(ifNoneMatch, etag)) {
+  if (!import.meta.env.DEV && etagMatches(ifNoneMatch, etag)) {
     headers.delete("content-length");
     headers.delete("content-type");
     return new Response(null, {
