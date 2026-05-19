@@ -57,6 +57,9 @@ if (!htmlParts.ok) {
 
 const res = htmlParts.data;
 
+let [, IMG_EXT] = res.content_type.split("/");
+IMG_EXT = IMG_EXT.includes("svg") ? "svg" : IMG_EXT;
+
 const num = Number(res.ethscription_number);
 
 const prev = num - 1 < 0 ? 0 : num - 1;
@@ -109,9 +112,7 @@ const blockscriptSearchParams = new URLSearchParams(url.searchParams);
 blockscriptSearchParams.set("font", nextBlockscript);
 const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
 
-const iframeSourceUrl = url
-    .toString()
-    .replace(url.pathname, `/${current}.html`);
+// const iframeSourceUrl = url.toString().replace(url.pathname, `/${current}.png`);
 
 // === Sepolia
 // highscript woff2 gzip = 0x2f8397abd2d4244c3c2196fcabae519ef625ac292eeeccbbf632b01252366702
@@ -309,8 +310,8 @@ const iframeSourceUrl = url
             {
                 !res.isNotImage && (
                     <iframe
-                        src={iframeSourceUrl}
-                        class="p-0 m-0 w-[750px] h-[750px]"
+                        src={`/${current}.${IMG_EXT}?cell=9&size=768`}
+                        class="p-0 m-0 w-[770px] h-[770px] pt-1 pl-1"
                     />
                 )
             }
@@ -325,6 +326,7 @@ const iframeSourceUrl = url
         <script type="module" is:inline>
             import domToImageMore from "https://esm.sh/dom-to-image-more@3.2.0";
 
+            const DISABLED = true;
             function initDownloadButton() {
                 const downloadButton = document.querySelector("#download-btn");
                 if (!downloadButton) return;
@@ -337,6 +339,10 @@ const iframeSourceUrl = url
                 );
 
                 newDownloadButton.addEventListener("click", async () => {
+                    if (DISABLED) {
+                        alert("disabled temporarily");
+                        return;
+                    }
                     // const container = document.querySelector(".asciiart");
                     const iframe = document.querySelector("iframe");
                     const container =
