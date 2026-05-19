@@ -2,6 +2,22 @@ import sharp from "sharp";
 
 type Rgb = { r: number; g: number; b: number };
 
+// # compact
+// cell=8&size=304  - small  (11.5 KB)
+// cell=8&size=336  - medium (13.5 KB)
+// cell=8&size=360  - big    (15.3 KB)
+// cell=8&size=376  - bigger
+
+// # balanced
+// cell=9&size=342  - small  (12.6 KB)
+// cell=9&size=380  - medium (14.8 KB)
+// cell=9&size=405  - big    (16.7 KB)
+
+// # detail
+// cell=10&size=380 - small  (13.1 KB)
+// cell=10&size=420 - medium (15.7 KB)
+// cell=10&size=450 - big    (17.7 KB)
+
 export type RenderBlockscriptOptions = {
   size?: number;
   cellWidth?: number;
@@ -1218,6 +1234,34 @@ function clearCell(
   }
 }
 
+function trimRightBottomEdge(
+  output: Buffer,
+  outputWidth: number,
+  outputHeight: number,
+  pages: number,
+  trimRight: number,
+  trimBottom: number,
+) {
+  const trimmedWidth = outputWidth - trimRight;
+  const trimmedHeight = outputHeight - trimBottom;
+  if (trimRight <= 0 && trimBottom <= 0) return output;
+  if (trimmedWidth <= 0 || trimmedHeight <= 0) return output;
+  const trimmed = Buffer.alloc(trimmedWidth * trimmedHeight * pages * 4);
+  for (let page = 0; page < pages; page += 1) {
+    const sourcePageOffset = page * outputWidth * outputHeight * 4;
+    const trimmedPageOffset = page * trimmedWidth * trimmedHeight * 4;
+    for (let y = 0; y < trimmedHeight; y += 1) {
+      output.copy(
+        trimmed,
+        trimmedPageOffset + y * trimmedWidth * 4,
+        sourcePageOffset + y * outputWidth * 4,
+        sourcePageOffset + (y * outputWidth + trimmedWidth) * 4,
+      );
+    }
+  }
+  return trimmed;
+}
+
 export async function renderBlockscriptImage(
   input: Uint8Array | ArrayBuffer,
   options: RenderBlockscriptOptions = {},
@@ -1394,19 +1438,32 @@ export async function renderBlockscriptImage(
     }
   }
 
+  const trimRight = Math.max(0, resolvedOptions.cellWidth - 7);
+  const trimBottom = Math.max(0, resolvedOptions.cellHeight - 7);
+  const encodedOutput = trimRightBottomEdge(
+    output,
+    outputWidth,
+    outputHeight,
+    pages,
+    trimRight,
+    trimBottom,
+  );
+  const encodedOutputWidth = outputWidth - trimRight;
+  const encodedOutputHeight = outputHeight - trimBottom;
+
   let rendered: Buffer;
   let mimeType: "image/png" | "image/gif";
 
   if (isAnimatedGif || resolvedOptions.outputFormat === "gif") {
     const framePngs = [];
     for (let page = 0; page < pages; page += 1) {
-      const frame = output.subarray(
-        page * outputWidth * outputHeight * 4,
-        (page + 1) * outputWidth * outputHeight * 4,
+      const frame = encodedOutput.subarray(
+        page * encodedOutputWidth * encodedOutputHeight * 4,
+        (page + 1) * encodedOutputWidth * encodedOutputHeight * 4,
       );
       framePngs.push(
         await sharp(frame, {
-          raw: { width: outputWidth, height: outputHeight, channels: 4 },
+          raw: { width: encodedOutputWidth, height: encodedOutputHeight, channels: 4 },
         })
           .png({ palette: true, effort: 10, compressionLevel: 9 })
           .toBuffer(),
@@ -1422,10 +1479,10 @@ export async function renderBlockscriptImage(
       .toBuffer();
     mimeType = "image/gif";
   } else {
-    rendered = await sharp(output, {
+    rendered = await sharp(encodedOutput, {
       raw: {
-        width: outputWidth,
-        height: outputHeight,
+        width: encodedOutputWidth,
+        height: encodedOutputHeight,
         channels: 4,
       },
     })
@@ -1445,8 +1502,8 @@ export async function renderBlockscriptImage(
     sourceHeight,
     gridWidth,
     gridHeight,
-    outputWidth,
-    outputHeight,
+    outputWidth: encodedOutputWidth,
+    outputHeight: encodedOutputHeight,
     pages,
   };
 }

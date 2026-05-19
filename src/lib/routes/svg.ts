@@ -7,7 +7,7 @@ import { renderBlockscriptSvg } from "../blockscript-svg";
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 
 const DEFAULT_CELL_SIZE = 8;
-const DEFAULT_RESO_SIZE = 372;
+const DEFAULT_RESO_SIZE = 376; // 360 368 376
 
 function positiveInt(value: string | null, fallback: number, max = 4096) {
   if (!value) return fallback;

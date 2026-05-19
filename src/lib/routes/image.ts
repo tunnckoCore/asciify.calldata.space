@@ -5,8 +5,24 @@ import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
 
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 
+// # compact
+// cell=8&size=304  - small  (11.5 KB)
+// cell=8&size=336  - medium (13.5 KB)
+// cell=8&size=360  - big    (15.3 KB)
+// cell=8&size=376  - bigger
+
+// # balanced
+// cell=9&size=342  - small  (12.6 KB)
+// cell=9&size=380  - medium (14.8 KB)
+// cell=9&size=405  - big    (16.7 KB)
+
+// # detail
+// cell=10&size=380 - small  (13.1 KB)
+// cell=10&size=420 - medium (15.7 KB)
+// cell=10&size=450 - big    (17.7 KB)
+
 const DEFAULT_CELL_SIZE = 9;
-const DEFAULT_RESO_SIZE = 372;
+const DEFAULT_RESO_SIZE = 342;
 
 function positiveInt(value: string | null, fallback: number, max = 4096) {
   if (!value) return fallback;

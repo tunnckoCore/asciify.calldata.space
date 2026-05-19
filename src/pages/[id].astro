@@ -317,14 +317,25 @@ const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
         }
         {
             !res.isNotImage && (
-                <div class="order-1 flex items-center justify-center border border-gray-100 md:order-3">
-                    <div class="size-[456px] pt-1 pl-1 overflow-hidden bg-black">
-                        <iframe
-                            src={`/${current}.${IMG_EXT}?size=452`}
-                            title={`Asciified Ethscription #${current}`}
-                            class="block size-[452px] p-0 m-0 border-0"
-                        />
-                    </div>
+                <div class="order-1 gap-2 flex items-center justify-center md:order-3">
+                    <img
+                        loading="eager"
+                        decoding="async"
+                        fetchpriority="high"
+                        src={`/${current}.${IMG_EXT}?cell=10&size=400`}
+                        alt={`Asciified Ethscription #${current}`}
+                        style="image-rendering: pixelated"
+                        class="p-1 border block size-[400px]"
+                    />
+                    <img
+                        loading="eager"
+                        decoding="async"
+                        fetchpriority="high"
+                        src={`/${current + 1}.${IMG_EXT}?cell=10&size=400`}
+                        alt={`Asciified Ethscription #${current + 1}`}
+                        style="image-rendering: pixelated"
+                        class="p-1 border block size-[400px]"
+                    />
                 </div>
             )
         }
