@@ -1198,13 +1198,25 @@ function stampGlyph(
   cellHeight: number,
   glyphScale: number,
 ) {
-  const drawWidth = Math.min(cellWidth, Math.max(1, Math.ceil(glyph.width * glyphScale)));
-  const drawHeight = Math.min(cellHeight, Math.max(1, Math.ceil(glyph.height * glyphScale)));
+  const drawWidth = Math.min(
+    cellWidth,
+    Math.max(1, Math.ceil(glyph.width * glyphScale)),
+  );
+  const drawHeight = Math.min(
+    cellHeight,
+    Math.max(1, Math.ceil(glyph.height * glyphScale)),
+  );
   for (let y = 0; y < drawHeight; y += 1) {
-    const sourceY = Math.min(glyph.height - 1, Math.floor((y * glyph.height) / drawHeight));
+    const sourceY = Math.min(
+      glyph.height - 1,
+      Math.floor((y * glyph.height) / drawHeight),
+    );
     const row = glyph.rows[sourceY] ?? "";
     for (let x = 0; x < drawWidth; x += 1) {
-      const sourceX = Math.min(glyph.width - 1, Math.floor((x * glyph.width) / drawWidth));
+      const sourceX = Math.min(
+        glyph.width - 1,
+        Math.floor((x * glyph.width) / drawWidth),
+      );
       if (row[sourceX] !== "1") continue;
       const destIndex = ((top + y) * outputWidth + left + x) * 4;
       output[destIndex] = color.r;
@@ -1469,7 +1481,11 @@ export async function renderBlockscriptImage(
       );
       framePngs.push(
         await sharp(frame, {
-          raw: { width: encodedOutputWidth, height: encodedOutputHeight, channels: 4 },
+          raw: {
+            width: encodedOutputWidth,
+            height: encodedOutputHeight,
+            channels: 4,
+          },
         })
           .png({ palette: true, effort: 10, compressionLevel: 9 })
           .toBuffer(),

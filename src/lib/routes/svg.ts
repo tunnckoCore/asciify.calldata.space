@@ -1,6 +1,6 @@
+import { bech32 } from "@scure/base";
 import type { APIContext } from "astro";
 import stringify from "canonical-json";
-import { bech32 } from "@scure/base";
 import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
 import { renderBlockscriptSvg } from "../blockscript-svg";
 
@@ -36,11 +36,16 @@ export async function svgRoute(ctx: APIContext) {
   }
 
   const res = await fetchEthscriptionContent(id);
-  const cWidth = url.searchParams.get("cell") ?? url.searchParams.get("cellWidth")
-  const cHeight = url.searchParams.get("cell") ?? url.searchParams.get("cellHeight")
+  const cWidth =
+    url.searchParams.get("cell") ?? url.searchParams.get("cellWidth");
+  const cHeight =
+    url.searchParams.get("cell") ?? url.searchParams.get("cellHeight");
   const cellWidth = positiveInt(cWidth, DEFAULT_CELL_SIZE, 64);
   const cellHeight = positiveInt(cHeight, DEFAULT_CELL_SIZE, 64);
-  const requestedSize = positiveInt(url.searchParams.get("size"), DEFAULT_RESO_SIZE);
+  const requestedSize = positiveInt(
+    url.searchParams.get("size"),
+    DEFAULT_RESO_SIZE,
+  );
   const defaultGridWidth = Math.max(1, Math.floor(requestedSize / cellWidth));
   const defaultGridHeight = Math.max(1, Math.floor(requestedSize / cellHeight));
   const grid = url.searchParams.get("grid");
@@ -97,15 +102,18 @@ export async function svgRoute(ctx: APIContext) {
       ),
       circle: url.searchParams.has("circle"),
       heart: url.searchParams.has("heart"),
-      fontUrl: url.searchParams.has("nohighscript") ?? url.searchParams.has("rawtext")
-        ? null : (url.searchParams.get("fontUrl") ??
-          "/ethscriptions/0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a/content")
-        ,
+      fontUrl:
+        (url.searchParams.has("nohighscript") ??
+        url.searchParams.has("rawtext"))
+          ? null
+          : (url.searchParams.get("fontUrl") ??
+            "/ethscriptions/0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a/content"),
       imageUrl:
         url.searchParams.get("imageUrl") ??
         url.searchParams.get("url") ??
         `/ethscriptions/${id}/content`,
-      expandText: url.searchParams.has("expandText") || url.searchParams.has("expand"),
+      expandText:
+        url.searchParams.has("expandText") || url.searchParams.has("expand"),
       text: encodeHbsText(metadataText),
     });
 

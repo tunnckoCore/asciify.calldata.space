@@ -7,8 +7,8 @@ import {
 // 0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a
 type Rgb = { r: number; g: number; b: number };
 
-const DEFAULT_HIGHSCRIPT_SIZE = 6
-const DEFAULT_TEXT_FONT_SIZE = 5
+const DEFAULT_HIGHSCRIPT_SIZE = 6;
+const DEFAULT_TEXT_FONT_SIZE = 5;
 
 export type RenderBlockscriptSvgOptions = Omit<
   RenderBlockscriptOptions,
@@ -97,10 +97,11 @@ export async function renderBlockscriptSvg(
   const requestedGridHeight =
     merged.gridHeight ??
     Math.max(1, Math.round(merged.size / merged.cellHeight));
-  const fullText = merged.text ?? glyphText(
-    inputBuffer,
-    requestedGridWidth * requestedGridHeight,
-  );
+
+  const fullText =
+    merged.text ??
+    glyphText(inputBuffer, requestedGridWidth * requestedGridHeight);
+
   const gridWidth = requestedGridWidth;
   const usesHighBlockscript = Boolean(merged.fontUrl);
   const textCoordinateScale = usesHighBlockscript ? 4 : 1;
@@ -153,9 +154,13 @@ export async function renderBlockscriptSvg(
   const letterSpacing = usesHighBlockscript
     ? (highscriptPitch - highscriptFontSize * 0.78) * textCoordinateScale
     : 0;
-  const fontSize = (usesHighBlockscript ? highscriptFontSize : fallbackFontSize) * textCoordinateScale;
+  const fontSize =
+    (usesHighBlockscript ? highscriptFontSize : fallbackFontSize) *
+    textCoordinateScale;
   const glyphTransform =
-    textCoordinateScale === 1 ? "" : ` transform="scale(${1 / textCoordinateScale})"`;
+    textCoordinateScale === 1
+      ? ""
+      : ` transform="scale(${1 / textCoordinateScale})"`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${outputWidth}" height="${outputHeight}" viewBox="0 0 ${outputWidth} ${outputHeight}"><style>${fontFace}svg{shape-rendering:geometricPrecision}text{font-family:${fontFamily};font-size:${fontSize}px;letter-spacing:${letterSpacing}px;dominant-baseline:hanging;text-anchor:start;white-space:pre;text-rendering:geometricPrecision;-webkit-font-smoothing:antialiased}</style><defs><mask id="glyph-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${outputWidth}" height="${outputHeight}"><rect width="100%" height="100%" fill="black"/><g fill="white"${glyphTransform}>${textMarkup}</g></mask><mask id="shape-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${outputWidth}" height="${outputHeight}"><rect width="100%" height="100%" fill="black"/>${shapeMask}</mask></defs>${backgroundRect}<g mask="url(#glyph-mask)">${image}</g></svg>`;
 
   return {

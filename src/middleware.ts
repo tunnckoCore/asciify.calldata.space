@@ -1,7 +1,8 @@
 import { defineMiddleware } from "astro:middleware";
 import { CACHE_TTL_SECONDS, getCacheHeaders, getCacheKey } from "@/lib/cache";
 
-const DEV = process.env.DEV == null ? import.meta.env.DEV : process.env.DEV === "true";
+const DEV =
+  process.env.DEV == null ? import.meta.env.DEV : process.env.DEV === "true";
 
 type CachedResponse = {
   body: ArrayBuffer;
@@ -41,7 +42,8 @@ function shouldProcess(response: Response) {
 function wantsSvgShell(request: Request, ext: string | undefined) {
   if (ext !== "svg") return false;
   const destination = request.headers.get("sec-fetch-dest");
-  if (destination) return destination === "iframe" || destination === "document";
+  if (destination)
+    return destination === "iframe" || destination === "document";
   return request.headers.get("accept")?.includes("text/html") ?? false;
 }
 
@@ -120,10 +122,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
   let body = await response.arrayBuffer();
   const headers = new Headers(response.headers);
 
-  if (shouldShellSvg && headers.get("content-type")?.startsWith("image/svg+xml")) {
+  if (
+    shouldShellSvg &&
+    headers.get("content-type")?.startsWith("image/svg+xml")
+  ) {
     const size = headers.get("x-blockscript-size")?.replace("x", "×") ?? "";
     const title = `${formattedRoute?.[1]}.svg${size ? ` (${size})` : ""}`;
-    body = new TextEncoder().encode(svgShell(new TextDecoder().decode(body), title)).buffer;
+    body = new TextEncoder().encode(
+      svgShell(new TextDecoder().decode(body), title),
+    ).buffer;
     headers.set("content-type", "text/html; charset=utf-8");
     headers.set("x-asciify-svg-shell", "1");
   }

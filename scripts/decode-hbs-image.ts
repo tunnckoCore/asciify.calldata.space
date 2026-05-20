@@ -5,7 +5,9 @@ import { GLYPH_ROWS } from "../src/lib/blockscript";
 
 const path = process.argv[2];
 if (!path) {
-  console.error("Usage: bun scripts/decode-hbs-image.ts <image.png|image.gif> [page]");
+  console.error(
+    "Usage: bun scripts/decode-hbs-image.ts <image.png|image.gif> [page]",
+  );
   process.exit(1);
 }
 
@@ -63,7 +65,11 @@ async function decodeText(text: string, info: Record<string, unknown>) {
   }
   const bytes = bech32.fromWords(decoded.words).subarray(0, declaredLength);
   const json = new TextDecoder().decode(bytes);
-  console.log({ declaredLength, decodedBytes: bytes.length, checksum: "valid" });
+  console.log({
+    declaredLength,
+    decodedBytes: bytes.length,
+    checksum: "valid",
+  });
   console.log(json);
   try {
     console.log(JSON.stringify(JSON.parse(json), null, 2));
@@ -100,7 +106,12 @@ for (let y = 0; y < gridHeight; y += 1) {
       for (let glyphX = 0; glyphX < 7; glyphX += 1) {
         const index =
           ((y * cellHeight + glyphY) * width + x * cellWidth + glyphX) * 4;
-        row += isInk(data[index], data[index + 1], data[index + 2], data[index + 3])
+        row += isInk(
+          data[index],
+          data[index + 1],
+          data[index + 2],
+          data[index + 3],
+        )
           ? "1"
           : "0";
       }

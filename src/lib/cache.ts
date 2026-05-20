@@ -1,5 +1,5 @@
-
-const DEV = process.env.DEV == null ? import.meta.env.DEV : process.env.DEV === "true";
+const DEV =
+  process.env.DEV == null ? import.meta.env.DEV : process.env.DEV === "true";
 
 export const CACHE_TTL_SECONDS = 31536000;
 export const EXCLUDED_QS = [
