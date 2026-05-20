@@ -1,14 +1,68 @@
 import type { APIContext } from "astro";
-import stringify from "canonical-json";
 import {
   DEFAULT_OPTIONS,
   detectInputFormat,
-  encodeHbsText,
   renderBlockscriptImage,
 } from "@/lib/blockscript-image";
 import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
+import { encodeHbs } from "@/lib/hbs";
+
+// moonbird attrs
+// const metadataJson = stringify({
+//   ...(await fetchEthscription(id)).contentBody.result,
+//   // attributes: [
+//   //   { trait_type: "Eyewear", value: "Rose-Colored Glasses" },
+//   //   { trait_type: "Outerwear", value: "Diamond Necklace" },
+//   //   { trait_type: "Headwear", value: "Fire" },
+//   //   { trait_type: "Body", value: "Crescent" },
+//   //   { trait_type: "Feathers", value: "Brown" },
+//   //   { trait_type: "Background", value: "Purple" },
+//   //   { trait_type: "Beak", value: "Short - Orange" },
+//   // ],
+// });
+//
+// Comrade 8711 - 6169177 - 0xa51759f47d949e755de3c30964e0fb14d7b638a12354fd40fc62eba0313e2653
+const attr = [
+  {
+    trait_type: "Background",
+    value: "Classic Punks BG",
+  },
+  {
+    trait_type: "Type",
+    value: "Human Melanin Level Goth",
+  },
+  {
+    trait_type: "Cloths",
+    value: "Vampire Attack Attire",
+  },
+  {
+    trait_type: "Head",
+    value: "Blockthink Receiver",
+  },
+  {
+    trait_type: "Eyes",
+    value: "Visoor Pink",
+  },
+  {
+    trait_type: "Classification",
+    value: "Comrade",
+  },
+  {
+    trait_type: "Affiliation",
+    value: "Corrupted",
+  },
+  {
+    trait_type: "Rank",
+    value: "4300",
+  },
+];
 
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
+const textModes = ["highscript", "lowscript", "monospace"] as const;
+
+function textModeParam(value: string | null) {
+  return textModes.find((mode) => mode === value) ?? DEFAULT_OPTIONS.textMode;
+}
 
 function positiveNumber(
   value: string | null | undefined,
@@ -59,21 +113,9 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
   let result: Awaited<ReturnType<typeof renderBlockscriptImage>>;
 
   try {
-    const metadataJson = stringify({
-      ...(await fetchEthscription(id)).contentBody.result,
-      attributes: [
-        { trait_type: "Eyewear", value: "Rose-Colored Glasses" },
-        { trait_type: "Outerwear", value: "Diamond Necklace" },
-        { trait_type: "Headwear", value: "Fire" },
-        { trait_type: "Body", value: "Crescent" },
-        { trait_type: "Feathers", value: "Brown" },
-        { trait_type: "Background", value: "Purple" },
-        { trait_type: "Beak", value: "Short - Orange" },
-      ],
-    });
-
     result = await renderBlockscriptImage(res.contentBody, {
-      text: encodeHbsText(metadataJson),
+      text: encodeHbs((await fetchEthscription(id)).contentBody.result),
+      attributes: attr,
       cell: positiveNumber(
         ctx.url.searchParams.get("cell"),
         DEFAULT_OPTIONS.cell,
@@ -95,6 +137,11 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
         64,
       ),
       outputFormat,
+      textMode: textModeParam(ctx.url.searchParams.get("mode")),
+      background:
+        ctx.url.searchParams.get("bg") ??
+        ctx.url.searchParams.get("background") ??
+        DEFAULT_OPTIONS.background,
     });
   } catch (error) {
     return new Response(

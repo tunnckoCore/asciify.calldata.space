@@ -117,7 +117,7 @@ export async function fetchEthscriptionContent(
 type FocusedRecord = {
   block_number: number;
   block_hash: `0x${string}`;
-  block_datetime: "2023-08-21T23:27:47.000Z";
+  block_timestamp: number;
   transaction_hash: `0x${string}`;
   transaction_index: number;
   transaction_value: number;
@@ -147,7 +147,7 @@ export async function fetchEthscription(id: EthscriptionId) {
   );
   ethUrl.searchParams.set(
     "only",
-    "block_number,block_hash,block_datetime,transaction_hash,transaction_index,transaction_value,transaction_fee,gas_price,gas_used,creator,receiver,media_type,media_subtype,content_type,content_sha,ethscription_number,current_owner,previous_owner",
+    "block_number,block_hash,block_timestamp,transaction_hash,transaction_index,transaction_value,transaction_fee,gas_price,gas_used,creator,receiver,content_type,content_sha,ethscription_number,current_owner,previous_owner",
   );
 
   const resp = await typedFetcher<{
@@ -193,4 +193,4 @@ export async function fetchEthscription(id: EthscriptionId) {
 
 // console.log(text)
 
-// https://mainnet.api.calldata.space/ethscriptions/1092558?with=content_uri,ethscription_number,current_owner,previous_owner&only=block_number,block_hash,block_datetime,transaction_hash,transaction_index,transaction_value,transaction_fee,gas_price,gas_used,creator,receiver,media_type,media_subtype,content_type,content_sha,content_uri,ethscription_number,current_owner,previous_owner,
+// https://mainnet.api.calldata.space/ethscriptions/1092558?with=content_uri,ethscription_number,current_owner,previous_owner&only=block_number,block_hash,block_timestamp,transaction_hash,transaction_index,transaction_value,transaction_fee,gas_price,gas_used,creator,receiver,media_type,media_subtype,content_type,content_sha,content_uri,ethscription_number,current_owner,previous_owner,

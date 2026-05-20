@@ -1,3 +1,7 @@
+export type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
 export type EthscriptionId = string;
 
 export type EthscriptionPrimitive = string | number | boolean | null;

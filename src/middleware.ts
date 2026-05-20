@@ -1,5 +1,6 @@
 import { defineMiddleware } from "astro:middleware";
 import { CACHE_TTL_SECONDS, getCacheHeaders, getCacheKey } from "@/lib/cache";
+import { digest } from "@/lib/utils";
 
 const DEV =
   process.env.DEV == null ? import.meta.env.DEV : process.env.DEV === "true";
@@ -14,13 +15,6 @@ type CachedResponse = {
 };
 
 const responseCache = new Map<string, CachedResponse>();
-
-async function digest(value: ArrayBuffer) {
-  const hash = await crypto.subtle.digest("SHA-256", value);
-  return Array.from(new Uint8Array(hash))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
 
 function etagMatches(ifNoneMatch: string | null, etag: string) {
   if (!ifNoneMatch) return false;
