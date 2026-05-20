@@ -1,48 +1,79 @@
 ---
 // import Asciify from "../components/Asciify.jsx";
 import { ClientRouter } from "astro:transitions";
+import { getAsciiifyStyles, getHtmlFontPreload } from "@/lib/styles";
+import { buildHtmlParts } from "@/lib/utils";
+import { getFont } from "@/lib/url_getters";
+import { getCacheHeaders } from "@/lib/cache";
 
 // export const prerender = false;
 
-if (Astro.request.method === 'POST') {
-  const formData: FormData = (await Astro.request.formData()) as FormData;
-  const eid = formData.get('eid');
+if (Astro.request.method === "POST") {
+    const formData: FormData = (await Astro.request.formData()) as FormData;
+    const eid = formData.get("eid");
 
-  if (eid) {
-    return Astro.redirect('/' + eid);
-  }
+    if (eid) {
+        return Astro.redirect("/" + eid);
+    }
 }
-
 
 const url = new URL(Astro.request.url);
 
 // const mode = searchParams.get("mode") || "next";
 const { id } = Astro.params;
+const current = Math.max(Number(id) || 498580, 0);
+const referer = Astro.request.headers.get("referer");
+let refererId = NaN;
 
+if (referer) {
+    try {
+        refererId = Number(new URL(referer).pathname.slice(1));
+    } catch {
+        refererId = NaN;
+    }
+}
 
-let meta = await fetch('https://mainnet.api.calldata.space/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
-  x.json(),
+const direction =
+    Number.isFinite(refererId) && current < refererId ? "backward" : "forward";
+
+Astro.response.headers.set("x-asciify-art-curr", String(current));
+Astro.response.headers.set(
+    "x-asciify-art-ref-id",
+    String(Number.isNaN(refererId) ? 498580 : refererId),
 );
+Astro.response.headers.set("x-asciify-art-dirr", direction);
 
-if (meta.media_type === 'image' && meta.image_removed_by_request_of_rights_holder) {
-  const resp = await fetch('https://mainnet.api.calldata.space/ethscriptions/' + id + '?with=ethscription_number,content_uri').then((x) =>
-    x.json(),
-  );
-  meta = resp.data;
+console.log("id page SSR:", { font: url.searchParams.get("font") });
+
+const htmlParts = await buildHtmlParts(id, url);
+if (!htmlParts.ok) {
+    if (htmlParts.status === 404) {
+        const skipTo =
+            direction === "backward" ? Math.max(current - 1, 0) : current + 1;
+
+        return Astro.redirect(`/${skipTo}`);
+    }
+    return Astro.redirect("/498580");
 }
 
+const res = htmlParts.data;
 
-if (meta.error) {
-  return Astro.redirect('/498580')
-}
-
-const res = meta.result;
-const isNotImage = res.media_type !== 'image'
+let [, IMG_EXT] = res.content_type.split("/");
+IMG_EXT = IMG_EXT.includes("svg") ? "svg" : IMG_EXT;
+IMG_EXT = /jpe?g/.test(IMG_EXT) ? "png" : IMG_EXT;
 
 const num = Number(res.ethscription_number);
 
 const prev = num - 1 < 0 ? 0 : num - 1;
 const next = num + 1;
+
+Astro.response.headers.set("x-asciify-art-prev", String(prev));
+Astro.response.headers.set("x-asciify-art-next", String(next));
+
+const cacheHeaders = getCacheHeaders();
+Object.entries(cacheHeaders).forEach(([key, val]) => {
+    Astro.response.headers.set(key, val);
+});
 
 // if (!meta.mimetype.startsWith("image/") || meta.mimetype === "image/svg+xml") {
 //   const newLoc = mode === "next" ? next : prev;
@@ -51,12 +82,14 @@ const next = num + 1;
 //   return Astro.redirect("/" + newLoc + "?ts=" + Date.now());
 // }
 
-
 const ogHref = url.origin + url.pathname;
 // const ogEths = `Ethscription #${num.toLocaleString()}`;
 const ogDescription = `ASCII-fy your Ethscription Image`;
-const ogTitle = `Asciify.Art - Ethscription #${num.toLocaleString()}`
-const ogImage = (isNotImage || id === '498580') ? `${url.origin}/og-image.png` : `https://mainnet.api.calldata.space/ethscriptions/${res.ethscription_number}/content`;
+const ogTitle = `Asciify Art - Ethscription #${num.toLocaleString()}`;
+const ogImage =
+    res.isNotImage || id === "498580"
+        ? `${url.origin}/og-image.png`
+        : `${url.origin}/ethscriptions/${res.ethscription_number}/content`;
 // const imgUrl = `${url.origin}/og/${res.transaction_hash}-${isNotImage ? 0 : 1}.png?ts=${Date.now()}`;
 // // const imgUrl = `https://api.wgw.lol/api/ethscriptions/${isNotImage ? 0 : meta.transaction_hash}/data?noscale=1`;
 // const ogImage = `https://ogcdn.net/6064b869-74ed-4eb9-b76c-0b701ffe7e6b/v4/asciify.art/${encodeURIComponent(ogEths)}/${encodeURIComponent(imgUrl)}/og.png`;
@@ -66,13 +99,27 @@ const ogImage = (isNotImage || id === '498580') ? `${url.origin}/og-image.png` :
 // delete meta.collection_items;
 // delete meta.collections;
 
-let backgroundAsciiContent = JSON.stringify(res);
-while (backgroundAsciiContent.length < 18_000) {
-  const curr = backgroundAsciiContent.length;
-  backgroundAsciiContent += curr > 1000 ? backgroundAsciiContent.slice(0, 1000) : backgroundAsciiContent;
-}
+// let backgroundAsciiContent = JSON.stringify(res);
+// while (backgroundAsciiContent.length < 18_000) {
+//     const curr = backgroundAsciiContent.length;
+//     backgroundAsciiContent +=
+//         curr > 1000
+//             ? backgroundAsciiContent.slice(0, 1000)
+//             : backgroundAsciiContent;
+// }
 
-const blockscript = url.searchParams.get('blockscript') || null;
+const blockscript = getFont(url);
+const nextBlockscript =
+    blockscript === "highscript"
+        ? "lowscript"
+        : blockscript === "lowscript"
+          ? "none"
+          : "highscript";
+const blockscriptSearchParams = new URLSearchParams(url.searchParams);
+blockscriptSearchParams.set("font", nextBlockscript);
+const blockscriptHref = `${url.pathname}?${blockscriptSearchParams.toString()}`;
+
+// const iframeSourceUrl = url.toString().replace(url.pathname, `/${current}.png`);
 
 // === Sepolia
 // highscript woff2 gzip = 0x2f8397abd2d4244c3c2196fcabae519ef625ac292eeeccbbf632b01252366702
@@ -93,319 +140,263 @@ const blockscript = url.searchParams.get('blockscript') || null;
 ---
 
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <link rel="preload" as="font" type="font/woff2" id="highscript-woff" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x5296ef8b8fb4168b57a09813622f7bc8198a9456b57886e47e1129475ef88d4a/content"/>
-    <link rel="preload" as="font" type="font/otf" id="highscript-otf" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0xcbf0c8a0c61f8018f9ad186e4aaa300faad892c6cbfa398841814f02c3bdea30/content"/>
-    <link rel="preload" as="font" type="font/woff2" id="lowscript-woff" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x6c588b716ba2c2eda5fc12acea9914a103f0bfeb0bb47ab2072cf523fa2339a8/content"/>
-    <link rel="preload" as="font" type="font/otf" id="lowscript-otf" crossorigin href="https://mainnet.api.calldata.space/ethscriptions/0x665ba2d452904e03e1943e0800af42468e107b614ee4ec59d377a66ffbe5ea5d/content"/>
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+        <Fragment set:html={getHtmlFontPreload(url, "highscript")} />
+        <Fragment set:html={getHtmlFontPreload(url, "lowscript")} />
 
-    <ClientRouter />
+        <ClientRouter />
 
-    <!-- HTML Meta Tags -->
-    <title>{ogTitle}</title>
-    <meta name="description" content={ogDescription} />
+        <!-- HTML Meta Tags -->
+        <title>{ogTitle}</title>
+        <meta name="description" content={ogDescription} />
 
-    <!-- Facebook Meta Tags -->
-    <meta property="og:url" content={ogHref} />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content={ogTitle} />
-    <meta property="og:description" content={ogDescription} />
-    <meta property="og:image" content={ogImage} />
-    <meta property="og:site_name" content="Asciify.Art">
-    <!-- Twitter Meta Tags -->
-    <meta name="twitter:site" content="@wgw_eth" />
-    <meta name="twitter:creator" content="@wgw_eth" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta property="twitter:domain" content={url.origin} />
-    <meta property="twitter:url" content={ogHref} />
-    <meta name="twitter:title" content={ogTitle} />
-    <meta name="twitter:description" content={ogDescription} />
-    <meta name="twitter:image" content={ogImage} />
+        <!-- Facebook Meta Tags -->
+        <meta property="og:url" content={ogHref} />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={ogImage} />
+        <meta property="og:site_name" content="Asciify.Art" />
+        <!-- Twitter Meta Tags -->
+        <meta name="twitter:site" content="@wgw_eth" />
+        <meta name="twitter:creator" content="@wgw_eth" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta property="twitter:domain" content={url.origin} />
+        <meta property="twitter:url" content={ogHref} />
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={ogDescription} />
+        <meta name="twitter:image" content={ogImage} />
 
-    <style is:global>
-      /* define:vars={{ contentUri: `url("${meta.content_uri}")` }} */
-    * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-    }
-
-    @font-face {
-        font-family: "High Blockscript";
-        src:
-            url("/fonts/high-blockscript.woff2") format("woff2"),
-            url("/fonts/high-blockscript.otf") format("opentype");
-        font-display: swap;
-    }
-
-    @font-face {
-        font-family: "Low Blockscript";
-        src:
-            url("/fonts/low-blockscript.woff2") format("woff2"),
-            url("/fonts/low-blockscript.otf") format("opentype");
-        font-display: swap;
-    }
-
-    .highscript {
-        font-family: "High Blockscript";
-    }
-    .lowscript {
-        font-family: "Low Blockscript";
-    }
-
-    .asciiart {
-        background-clip: text;
-        background-position: center center;
-        background-repeat: no-repeat;
-        background-size: cover;
-        -webkit-text-fill-color: transparent;
-        text-fill-color: transparent;
-        word-break: break-all;
-        color: #fff;
-        font-size: clamp(10px, 2vw, 12px);
-        text-align: justify;
-    }
-
-    .art {
-        width: 100%;
-        max-width: 750px;
-        min-height: 750px;
-        max-height: 750px;
-    }
-
-    @media (max-width: 640px) {
-        .art {
-            max-width: calc(100vw - 16px);
-            min-height: 350px;
-            max-height: calc(100vw - 16px);
-        }
-    }
-    </style>
-  </head>
-  <body class="pb-10 px-4 mx-auto flex w-full max-w-[750px] flex-col gap-2 items-center justify-center bg-black">
-      <h1 class="text-4xl font-extrabold text-gray-200 text-shadow mt-4 mb-2"><a href="/">Asciify.Art</a></h1>
-    <!-- Search: desktop order-1, mobile order-2 -->
-    <form method="POST" action={`/${id}`} class="flex w-full order-2 md:order-1">
-      <input
-        autofocus
-        type="text"
-        name="eid"
-        id="eid"
-        required
-        min="0"
-        placeholder="Search by Ethscription ID or number"
-        class="flex-1 border bg-gray-900/70 px-2 py-1.5 text-sm text-gray-200 outline-none"
-      />
-      <button type="submit" class="border bg-gray-200 px-3 py-1.5 text-sm whitespace-nowrap">Go</button>
-    </form>
-    <!-- Navbar: desktop order-2, mobile order-3 -->
-    <!-- Mobile: flex-col with full-width rows, Desktop: flex-row with centered items -->
-    <div class="flex flex-col md:flex-row w-full md:items-center md:justify-between gap-2 order-3 md:order-2">
-      <!-- Row 1 (mobile): Download, High Blockscript, GitHub - all centered -->
-      <div class="flex w-full md:w-auto items-center gap-2 justify-between">
-        {blockscript || blockscript !== 'none'
-          ? <a class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0" href={`${url.pathname}?blockscript=${blockscript === 'highscript' ? 'lowscript' :
-          blockscript === 'lowscript' ? 'none' : 'highscript'}`}>{
-            blockscript === 'highscript' ? 'Low Blockscript' : blockscript === 'lowscript' ? 'No Blockscript' : 'High Blockscript'
-          }</a>
-          : <a class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0" href={`${url.pathname}?blockscript=highscript`}>High Blockscript</a>
-        }
-        <a href="https://github.com/tunnckoCore/asciify.calldata.space" target="_blank" rel="noopener noreferrer" class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-2">
-            <svg class="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.868-.013-1.703-2.782.603-3.369-1.343-3.369-1.343-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.545 2.914 1.209.092-.937.349-1.546.636-1.903-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.578.688.48C19.138 20.194 22 16.441 22 12.017 22 6.484 17.522 2 12 2z" clip-rule="evenodd" />
-            </svg>
-            <span>GitHub</span>
-        </a>
-        <div
-          class={`cursor-pointer bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 ` + (isNotImage ? 'opacity-50' : '')}
-          id="download-btn"
-        >
-          Download
-        </div>
-      </div>
-      <!-- Row 2 (mobile): Previous and Next buttons - centered -->
-      <div class="flex w-full md:w-auto items-center gap-2 justify-between">
-        <a href={`/${prev}${url.search}`} class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          #{prev.toLocaleString()}
-        </a>
-        <a href={`/${next}${url.search}`} class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1">
-          #{next.toLocaleString()}
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </a>
-      </div>
-    </div>
-    <!-- Art: desktop order-3, mobile order-1 (appears before search/navbar on mobile) -->
-    <div
-      class="w-full flex items-center justify-center overflow-hidden border border-gray-100 p-2 order-1 md:order-3"
+        <style set:html={getAsciiifyStyles(url)}></style>
+        <!-- <style
+            id="style-highscript"
+            set:html={buildFontFace("highscript", baseUrl)}
+        ></style>
+        <style
+            id="style-lowscript"
+            set:html={buildFontFace("lowscript", baseUrl)}
+        ></style> -->
+    </head>
+    <body
+        class="pb-10 mx-auto flex w-full max-w-[750px] flex-col gap-3 items-center justify-center bg-black"
     >
-      {
-        isNotImage && (
-          <div class="mt-3.5 flex w-full flex-col items-center justify-center text-gray-100 px-2">
-            <h2 class="text-xl sm:text-3xl font-bold text-center">Not an image, try another</h2>
-            <div class="my-4 overflow-x-auto text-xs sm:text-base max-w-full">
-              {Object.entries(res).map(([key, value]) => {
-                if (res.content_type === 'text/html') {
-                  return null;
-                }
-
-                return (
-                  <p class="break-words">
-                    <strong>{key}:</strong>{' '}
-                    {typeof value === 'number' ? value.toLocaleString() : String(value)}
-                  </p>
-                );
-              })}
+        <h1
+            class="text-4xl font-extrabold text-gray-200 text-shadow mt-4 mb-2 md:text-5xl"
+        >
+            <a href="/">Asciify.Art</a>
+        </h1>
+        <!-- Search: desktop order-1, mobile order-2 -->
+        <form
+            method="POST"
+            action={`/${id}`}
+            class="flex w-full order-2 md:order-1"
+        >
+            <input
+                autofocus
+                type="text"
+                name="eid"
+                id="eid"
+                required
+                min="0"
+                placeholder="Search by Ethscription ID or number"
+                class="flex-1 border bg-gray-900/70 px-2 py-1.5 text-sm text-gray-200 outline-none"
+            />
+            <button
+                type="submit"
+                class="border bg-gray-200 px-3 py-1.5 text-sm whitespace-nowrap"
+                >Go</button
+            >
+        </form>
+        <!-- Navbar: desktop order-2, mobile order-3 -->
+        <!-- Mobile: flex-col with full-width rows, Desktop: flex-row with centered items -->
+        <div
+            class="flex flex-col md:flex-row w-full md:items-center md:justify-between gap-2 order-3 md:order-2"
+        >
+            <!-- Row 1 (mobile): Download, High Blockscript, GitHub - all centered -->
+            <div
+                class="flex w-full md:w-auto items-center gap-2 justify-between"
+            >
+                <a
+                    class={`bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 ${res.isNotImage ? "opacity-50  cursor-not-allowed" : ""}`}
+                    href={res.isNotImage ? null : blockscriptHref}
+                >
+                    {
+                        blockscript === "highscript"
+                            ? "Low Blockscript"
+                            : blockscript === "lowscript"
+                              ? "No Blockscript"
+                              : "High Blockscript"
+                    }
+                </a>
+                <a
+                    href="https://github.com/tunnckoCore/asciify.calldata.space"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-2"
+                >
+                    <svg
+                        class="w-4 h-4 md:w-5 md:h-5"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.868-.013-1.703-2.782.603-3.369-1.343-3.369-1.343-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.545 2.914 1.209.092-.937.349-1.546.636-1.903-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.578.688.48C19.138 20.194 22 16.441 22 12.017 22 6.484 17.522 2 12 2z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    <span>GitHub</span>
+                </a>
+                <div
+                    class={`cursor-pointer bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 ` +
+                        (res.isNotImage ? "opacity-50 cursor-not-allowed" : "")}
+                    id="download-btn"
+                >
+                    Download
+                </div>
             </div>
-          </div>
-        )
-      }
-      {
-        !isNotImage && (
-          <div
-            class={`asciiart art ${blockscript}`}
-            data-eid={res.transaction_hash}
-            data-enumber={res.ethscription_number}
-            style={`background-image: url("${res.content_uri}")`}
-          >
-              {backgroundAsciiContent}
-          </div>
-        )
-      }
-    </div>
-    <script type="module" is:inline>
-        import domToImageMore from "https://esm.sh/dom-to-image-more@3.2.0";
-
-        function initDownloadButton() {
-            const downloadButton = document.querySelector('#download-btn');
-            if (!downloadButton) return;
-
-            // Remove old listeners by cloning the element
-            const newDownloadButton = downloadButton.cloneNode(true);
-            downloadButton.parentNode.replaceChild(newDownloadButton, downloadButton);
-
-            newDownloadButton.addEventListener("click", async () => {
-                const container = document.querySelector('.asciiart');
-                if (container) {
-                    console.log("Downloading...");
-                    // Measure actual element dimensions
-                    const width = container.offsetWidth;
-                    const height = container.offsetHeight;
-                    console.log(`Measured dimensions: ${width}x${height}`);
-
-                    const res = await domToImageMore.toPng(container, {
-                        width: 750,
-                        height: height,
-                        bgcolor: '#000',
-                        filename: `${container.dataset.enumber}-${container.dataset.eid}.png`,
-                        format: "png",
-                    });
-
-                    const link = document.createElement("a");
-                    link.href = res;
-                    link.target = "_blank";
-                    link.download = `${container.dataset.enumber}-${container.dataset.eid}.png`;
-                    link.click();
-                    console.log("Download complete");
-                } else {
-                    console.log("No container found");
-                }
-            });
+            <!-- Row 2 (mobile): Previous and Next buttons - centered -->
+            <div
+                class="flex w-full md:w-auto items-center gap-2 justify-between"
+            >
+                <a
+                    href={`/${prev}${url.search}`}
+                    class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1"
+                >
+                    <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    #{prev.toLocaleString()}
+                </a>
+                <a
+                    href={`/${next}${url.search}`}
+                    class="bg-gray-200 p-2 text-sm whitespace-nowrap flex-shrink-0 flex items-center gap-1"
+                >
+                    #{next.toLocaleString()}
+                    <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+            </div>
+        </div>
+        <!-- Art: desktop order-3, mobile order-1 (appears before search/navbar on mobile) -->
+        {
+            res.isNotImage && (
+                <div class="order-1 w-fit border border-gray-100 md:order-3">
+                    <div class="mt-3.5 flex w-full flex-col items-center justify-center text-gray-100 px-2">
+                        <h2 class="text-xl sm:text-3xl font-bold text-center">
+                            Not an image, try another
+                        </h2>
+                        <div class="my-4 overflow-hidden text-xs sm:text-base max-w-full">
+                            {JSON.stringify({ foo: "bar" })}
+                        </div>
+                    </div>
+                </div>
+            )
         }
+        {
+            !res.isNotImage && (
+                <div class="order-1 gap-2 flex items-center justify-center md:order-3">
+                    <img
+                        loading="eager"
+                        decoding="async"
+                        fetchpriority="high"
+                        src={`/${current}.${IMG_EXT}?cell=10&size=400`}
+                        alt={`Asciified Ethscription #${current}`}
+                        style="image-rendering: pixelated"
+                        class="p-1 border block size-[400px]"
+                    />
+                    <img
+                        loading="eager"
+                        decoding="async"
+                        fetchpriority="high"
+                        src={`/${current + 1}.${IMG_EXT}?cell=10&size=400`}
+                        alt={`Asciified Ethscription #${current + 1}`}
+                        style="image-rendering: pixelated"
+                        class="p-1 border block size-[400px]"
+                    />
+                </div>
+            )
+        }
+        <!-- <div class="w-full">
+            <iframe
+                src={`http://localhost:4321/498602/html?font=highscript&ts=${Date.now()}`}
+                class="p-0 m-0 w-[200px] h-[200px]">x</iframe
+            >
+        </div> -->
+        <script type="module" is:inline>
+            import domToImageMore from "https://esm.sh/dom-to-image-more@3.2.0";
 
-        // Initialize on page load
-        initDownloadButton();
+            const DISABLED = true;
+            function initDownloadButton() {
+                const downloadButton = document.querySelector("#download-btn");
+                if (!downloadButton) return;
 
-        // Reinitialize after View Transitions
-        document.addEventListener('astro:after-swap', initDownloadButton);
-    </script>
+                // Remove old listeners by cloning the element
+                const newDownloadButton = downloadButton.cloneNode(true);
+                downloadButton.parentNode.replaceChild(
+                    newDownloadButton,
+                    downloadButton,
+                );
 
-    <!-- <Asciify meta={meta} prev={prev} next={next} client:load /> -->
-    <!-- <script type="module" is:inline define:vars={{ isNotImage: isNotImage }}>
-      import domToImageMore from 'https://esm.sh/dom-to-image-more@3.2.0';
+                newDownloadButton.addEventListener("click", async () => {
+                    if (DISABLED) {
+                        alert("disabled temporarily");
+                        return;
+                    }
+                    // const container = document.querySelector(".asciiart");
+                    const iframe = document.querySelector("iframe");
+                    const container =
+                        iframe?.contentDocument?.querySelector(".asciiart");
+                    if (container) {
+                        // Measure actual element dimensions
+                        const height = container.offsetHeight;
 
-      const downloadButton = document.querySelector('#download-btn');
+                        const res = await domToImageMore.toPng(container, {
+                            width: 750,
+                            height: height,
+                            bgcolor: "#000",
+                            filename: `${container.dataset.enumber}-${container.dataset.eid}.png`,
+                            format: "png",
+                        });
 
-      // const mapping = {
-      //   jpeg: domToImageMore.toJpeg,
-      //   jpg: domToImageMore.toJpeg,
-      //   png: domToImageMore.toPng,
-      // };
+                        const link = document.createElement("a");
+                        link.href = res;
+                        link.target = "_blank";
+                        link.download = `${container.dataset.enumber}-${container.dataset.eid}.png`;
+                        link.click();
+                    } else {
+                        // Container not found
+                    }
+                });
+            }
 
-      function base64ToUint8Array(base64String) {
-        // base64 sanitizing
-        const base64 = base64urlToBase64(base64String);
+            // Initialize on page load
+            initDownloadButton();
 
-        // base64 decoding
-        const rawData = atob(base64);
-
-        // Converting raw data to Uint8Array
-        return Uint8Array.from(rawData, (char) => char.charCodeAt(0));
-      }
-
-      function base64urlToBase64(base64UrlString) {
-        // Replace non-url compatible chars with base64 standard chars
-        const base64 = base64UrlString.replace(/-/g, '+').replace(/_/g, '/');
-
-        // Pad out with standard base64 required padding characters if missing
-        const missingPadding = '='.repeat((4 - (base64.length % 4)) % 4);
-
-        return base64 + missingPadding;
-      }
-
-      function base64toFile(b64, filename) {
-        const url = new URL(window.location.href);
-        const imageType = dataURL.slice(5, dataURL.indexOf(';base64'));
-        const imageDataBase64 = dataURL.slice(dataURL.indexOf(',') + 1);
-
-        const imageUint8 = base64ToUint8Array(imageDataBase64);
-        const imageName = `ethscription-` + url.pathname.replace(/^\//i, '');
-        const file = new File([imageUint8], filename || imageName, { type: imageType });
-
-        return file;
-      }
-
-      downloadButton.addEventListener('click', async () => {
-        if (isNotImage) return;
-
-        const art = document.querySelector('.art');
-
-        const dataURL = await domToImageMore.toPng(art, {
-          width: 750,
-          height: 750,
-          bgcolor: '#000',
-          style: {
-            padding: 0,
-            margin: 0,
-          },
-        });
-
-        // const canvas = await domToImageMore.toCanvas(art, {
-        //   width: 750,
-        //   height: 750,
-        //   bgcolor: "#000",
-        //   style: {
-        //     padding: 0,
-        //     margin: 0,
-        //   },
-        // });
-
-        // document.body.appendChild(canvas);
-
-        const link = document.createElement("a");
-        link.href = dataURL;
-        link.target = "_blank";
-        link.download = art.dataset.eid + ".png";
-        link.click();
-      });
-    </script> -->
-  </body>
+            // Reinitialize after View Transitions
+            document.addEventListener("astro:after-swap", initDownloadButton);
+        </script>
+    </body>
 </html>

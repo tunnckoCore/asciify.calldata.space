@@ -115,7 +115,7 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
 
 ## TODOs
 
-- [ ] T1. **Install Netlify adapter + update astro.config.mjs**
+- [x] T1. **Install Netlify adapter + update astro.config.mjs**
 
   **What to do**:
   - Remove `@astrojs/vercel` from dependencies
@@ -125,9 +125,9 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
   - Run `bun run build` to verify
 
   **Acceptance Criteria**:
-  - [ ] `@astrojs/netlify` installed in package.json
-  - [ ] `astro.config.mjs` uses `netlify()` adapter
-  - [ ] `bun run build` completes successfully
+  - [x] `@astrojs/netlify` installed in package.json
+  - [x] `astro.config.mjs` uses `netlify()` adapter
+  - [x] `bun run build` completes successfully
 
   **QA**:
 
@@ -138,7 +138,7 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
 
   **Commit**: `chore(deps): replace @astrojs/vercel with @astrojs/netlify`
 
-- [ ] T2. **Configure Astro.cache + caching utilities**
+- [x] T2. **Configure Astro.cache + caching utilities**
 
   **What to do**:
   - Create `src/lib/cache.ts` with cache helpers
@@ -146,8 +146,8 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
   - Cache headers for Netlify CDN durable cache
 
   **Acceptance Criteria**:
-  - [ ] `src/lib/cache.ts` exists with helper functions
-  - [ ] HTTP headers include proper Cache-Control directives
+  - [x] `src/lib/cache.ts` exists with helper functions
+  - [x] HTTP headers include proper Cache-Control directives
 
   **QA**:
 
@@ -158,7 +158,7 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
 
   **Commit**: `feat(cache): add Astro.cache utilities with Netlify CDN headers`
 
-- [ ] T3. **Create shared fetch/cache utilities for proxy**
+- [x] T3. **Create shared fetch/cache utilities for proxy**
 
   **What to do**:
   - Create `src/lib/fetch.ts` with `fetchEthscriptionMetadata(id)` and `fetchEthscriptionContent(id)`
@@ -166,12 +166,12 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
   - Handle errors (404, 500)
 
   **Acceptance Criteria**:
-  - [ ] `src/lib/fetch.ts` exists with both functions
-  - [ ] Functions use cache helpers
+  - [x] `src/lib/fetch.ts` exists with both functions
+  - [x] Functions use cache helpers
 
   **Commit**: `feat(fetch): add shared upstream fetch utilities with caching`
 
-- [ ] T4. **Create proxy metadata endpoint (/ethscriptions/<id>)**
+- [x] T4. **Create proxy metadata endpoint (/ethscriptions/<id>)**
 
   **What to do**:
   - Create `src/pages/ethscriptions/[id].ts`
@@ -180,9 +180,9 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
   - 404 if not found
 
   **Acceptance Criteria**:
-  - [ ] Responds at `/ethscriptions/498580`
-  - [ ] Returns valid JSON with `.result.ethscription_number`
-  - [ ] Cache headers set to 1 year
+  - [x] Responds at `/ethscriptions/498580`
+  - [x] Returns valid JSON with `.result.ethscription_number`
+  - [x] Cache headers set to 1 year
 
   **QA**:
 
@@ -193,7 +193,7 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
 
   **Commit**: `feat(proxy): add /ethscriptions/<id> metadata endpoint`
 
-- [ ] T5. **Create proxy content endpoint (/ethscriptions/<id>/content)**
+- [x] T5. **Create proxy content endpoint (/ethscriptions/<id>/content)**
 
   **What to do**:
   - Create `src/pages/ethscriptions/[id]/content.ts`
@@ -201,13 +201,13 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
   - Cache headers: 1 year
 
   **Acceptance Criteria**:
-  - [ ] Responds at `/ethscriptions/498580/content`
-  - [ ] Returns raw image content
-  - [ ] Cache headers set to 1 year
+  - [x] Responds at `/ethscriptions/498580/content`
+  - [x] Returns raw image content
+  - [x] Cache headers set to 1 year
 
   **Commit**: `feat(proxy): add /ethscriptions/<id>/content endpoint`
 
-- [ ] T6. **Create `/{id}/html` embedding endpoint**
+- [x] T6. **Create `/{id}/html` embedding endpoint**
 
   **What to do**:
   - Create `src/pages/[id]/html.ts`
@@ -224,13 +224,13 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
   - Cache headers: 1 year
 
   **Acceptance Criteria**:
-  - [ ] Responds at `/498580/html`
-  - [ ] Returns minimal HTML
-  - [ ] `font=highscript` includes preload link
-  - [ ] No font param = no preload links
-  - [ ] `base_url` prefixes URLs
-  - [ ] 404 for non-image (498583)
-  - [ ] Minified output
+  - [x] Responds at `/498580/html`
+  - [x] Returns minimal HTML
+  - [x] `font=highscript` includes preload link
+  - [x] No font param = no preload links
+  - [x] `base_url` prefixes URLs
+  - [x] 404 for non-image (498583)
+  - [x] Minified output
 
   **QA**:
 
@@ -244,7 +244,7 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
 
   **Commit**: `feat(page): add /{id}/html embedding endpoint`
 
-- [ ] T7. **Extract and inline CSS utilities for embedding**
+- [x] T7. **Extract and inline CSS utilities for embedding**
 
   **What to do**:
   - Create `src/lib/styles.ts` with:
@@ -254,24 +254,24 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
   - Extract from `src/pages/[id].astro`
 
   **Acceptance Criteria**:
-  - [ ] `src/lib/styles.ts` exists with helper functions
+  - [x] `src/lib/styles.ts` exists with helper functions
 
   **Commit**: `feat(styles): extract reusable CSS utilities for embedding`
 
-- [ ] T8. **Update `[id].astro` to use proxy endpoints**
+- [x] T8. **Update `[id].astro` to use proxy endpoints**
 
   **What to do**:
   - Replace direct `fetch()` to calldata.space with proxy endpoints
   - Keep all existing page logic (POST, redirects, HTML structure)
 
   **Acceptance Criteria**:
-  - [ ] Page loads without direct external fetches
-  - [ ] POST form still works
-  - [ ] ClientRouter still works
+  - [x] Page loads without direct external fetches
+  - [x] POST form still works
+  - [x] ClientRouter still works
 
   **Commit**: `refactor(page): use proxy endpoints instead of direct fetches`
 
-- [ ] T9. **GitHub Actions workflow for Netlify deploy**
+- [x] T9. **GitHub Actions workflow for Netlify deploy**
 
   **What to do**:
   - Create `.github/workflows/deploy.yml`
@@ -279,8 +279,8 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
   - Use Netlify integration (no CLI token)
 
   **Acceptance Criteria**:
-  - [ ] Workflow file exists and is valid
-  - [ ] Triggers on push to master
+  - [x] Workflow file exists and is valid
+  - [x] Triggers on push to master
 
   **Commit**: `ci: add GitHub Actions workflow for Netlify auto-deploy`
 
@@ -288,16 +288,16 @@ Wave FINAL (After ALL tasks - 4 parallel reviews):
 
 ## Final Verification Wave
 
-- [ ] F1. **Plan Compliance Audit** — `oracle`
+- [x] F1. **Plan Compliance Audit** — `oracle`
       Verify all Must Have items exist, all Must NOT Have items absent.
 
-- [ ] F2. **Code Quality Review** — `unspecified-high`
+- [x] F2. **Code Quality Review** — `unspecified-high`
       Run `astro check` + `build`. Check for anti-patterns.
 
-- [ ] F3. **Real Manual QA** — `unspecified-high` + `agent-browser`
+- [x] F3. **Real Manual QA** — `unspecified-high` + `agent-browser`
       Test all scenarios end-to-end.
 
-- [ ] F4. **Scope Fidelity Check** — `deep`
+- [x] F4. **Scope Fidelity Check** — `deep`
       Verify 1:1 task-to-implementation mapping.
 
 ---
@@ -324,10 +324,10 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:4321/498583/html
 
 ### Final Checklist
 
-- [ ] All "Must Have" present
-- [ ] All "Must NOT Have" absent
-- [ ] astro check passes (0 errors)
-- [ ] build passes with Netlify adapter
-- [ ] All proxy endpoints return correct data with cache headers
-- [ ] `/{id}/html` endpoint supports query params (font, base_url)
-- [ ] `/{id}/html` endpoint returns minimal compliant HTML
+- [x] All "Must Have" present
+- [x] All "Must NOT Have" absent
+- [x] astro check passes (0 errors)
+- [x] build passes with Netlify adapter
+- [x] All proxy endpoints return correct data with cache headers
+- [x] `/{id}/html` endpoint supports query params (font, base_url)
+- [x] `/{id}/html` endpoint returns minimal compliant HTML

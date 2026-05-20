@@ -1,0 +1,117 @@
+---
+
+---
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <meta name="viewport" content="width=device-width" />
+        <meta name="generator" content={Astro.generator} />
+
+        <!-- HTML Meta Tags -->
+        <title>test embed</title>
+    </head>
+    <body class="bg-red">
+        <h1 class="text-4xl font-extrabold text-gray-200 text-shadow mt-4 mb-2">
+            <a href="/">Asciify.Art</a>
+        </h1>
+        <!-- Search: desktop order-1, mobile order-2 -->
+        <form
+            method="POST"
+            action={`/123`}
+            class="flex w-full order-2 md:order-1"
+        >
+            <input
+                autofocus
+                type="text"
+                name="eid"
+                id="eid"
+                required
+                min="0"
+                placeholder="Search by Ethscription ID or number"
+                class="flex-1 border bg-gray-900/70 px-2 py-1.5 text-sm text-gray-200 outline-none"
+            />
+            <button
+                type="submit"
+                class="border bg-gray-200 px-3 py-1.5 text-sm whitespace-nowrap"
+                >Go</button
+            >
+        </form>
+
+        <div class="flex items-center justify-center flex-wrap h-screen">
+            <iframe
+                src={`http://localhost:4321/348295/html?font=lowscript&ts=${Date.now()}`}
+                class="rounded-full p-0 mx-5 w-[350px] h-[350px]">x</iframe
+            >
+            <iframe
+                src={`http://localhost:4321/498595/html?font=highscript&ts=${Date.now()}`}
+                class="rounded-full p-0 mx-5 w-[350px] h-[350px]">x</iframe
+            >
+            <iframe
+                src={`http://localhost:4321/6165813/html?font=highscript&ts=${Date.now()}`}
+                class="rounded-full p-0 mx-5 w-[350px] h-[350px]">x</iframe
+            >
+            <iframe
+                src={`http://localhost:4321/498580/html?ts=${Date.now()}`}
+                class="rounded-full p-0 mx-5 w-[350px] h-[350px]">x</iframe
+            >
+            <iframe
+                src={`http://localhost:4321/669056/html?font=highscript&ts=${Date.now()}`}
+                class="rounded-full p-0 mx-5 w-[350px] h-[350px]">x</iframe
+            >
+        </div>
+
+        <!-- <div class="w-full">
+            <iframe
+                src={`http://localhost:4321/498602/html?font=highscript&ts=${Date.now()}`}
+                class="p-0 m-0 w-[200px] h-[200px]">x</iframe
+            >
+        </div> -->
+        <script type="module" is:inline>
+            import domToImageMore from "https://esm.sh/dom-to-image-more@3.2.0";
+
+            function initDownloadButton() {
+                const downloadButton = document.querySelector("#download-btn");
+                if (!downloadButton) return;
+
+                // Remove old listeners by cloning the element
+                const newDownloadButton = downloadButton.cloneNode(true);
+                downloadButton.parentNode.replaceChild(
+                    newDownloadButton,
+                    downloadButton,
+                );
+
+                newDownloadButton.addEventListener("click", async () => {
+                    const container = document.querySelector(".asciiart");
+                    if (container) {
+                        // Measure actual element dimensions
+                        const height = container.offsetHeight;
+
+                        const res = await domToImageMore.toPng(container, {
+                            width: 750,
+                            height: height,
+                            bgcolor: "#000",
+                            filename: `${container.dataset.enumber}-${container.dataset.eid}.png`,
+                            format: "png",
+                        });
+
+                        const link = document.createElement("a");
+                        link.href = res;
+                        link.target = "_blank";
+                        link.download = `${container.dataset.enumber}-${container.dataset.eid}.png`;
+                        link.click();
+                    } else {
+                        // Container not found
+                    }
+                });
+            }
+
+            // Initialize on page load
+            initDownloadButton();
+
+            // Reinitialize after View Transitions
+            document.addEventListener("astro:after-swap", initDownloadButton);
+        </script>
+    </body>
+</html>

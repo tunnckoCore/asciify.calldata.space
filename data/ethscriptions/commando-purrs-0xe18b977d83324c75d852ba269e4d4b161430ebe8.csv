@@ -1,0 +1,9 @@
+token_id,ethscription_number,ethscription_id,attributes
+7,1387831,0x4ca33ceb3551fc8676d48268f80fc1e16d66571e0401956ebe5c1c1ecc807849,"[{""trait_type"":""Fur"",""value"":""Cream""}]"
+6,1387793,0x9473cc06bc8ad936db1dfb8705fadd1a81ff6bf41d2d4e51dc3ef71572b64aba,"[{""trait_type"":""Fur"",""value"":""Blue""}]"
+5,1387699,0xc1e2adf16b6e5f1136b5324f13f9b919183bb6c04b9b46360fd64719a4f1cf7a,"[{""trait_type"":""Fur"",""value"":""Saimese""}]"
+4,1387664,0x37754d106ee1bd391bfc650d652749fff864c57aea21ec562762e7b05f445688,"[{""trait_type"":""Fur"",""value"":""Orange""}]"
+3,1387635,0x386106171494b6667193e568503a74a5705791178769303414e3b200f00f0360,"[{""trait_type"":""Fur"",""value"":""Cheshire""}]"
+2,1387612,0xf6569fd1c920f51d62cba2f49710d190d9d37d2994929571beaeb896d50058d7,"[{""trait_type"":""Fur"",""value"":""White""}]"
+1,1387587,0xcb12b32293981f21db635eeabf842c8ad2a2a3cd1dc63b3a556ceed74b269dc0,"[{""trait_type"":""Fur"",""value"":""black""}]"
+0,1387565,0x02649a1d344e6e6dd4d568dea0450ca9bc1990d16b921be6353ef9df26544eff,"[{""trait_type"":""Fur"",""value"":""gold""}]"
