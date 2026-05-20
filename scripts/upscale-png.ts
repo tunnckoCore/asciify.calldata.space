@@ -62,6 +62,46 @@ function readTraitsTextChunk(data: Buffer) {
   return data.subarray(separator + 1).toString("latin1");
 }
 
+function readTraitsInternationalTextChunk(data: Buffer) {
+  const keywordEnd = data.indexOf(0);
+
+  if (keywordEnd === -1) {
+    return null;
+  }
+
+  const keyword = data.subarray(0, keywordEnd).toString("latin1");
+
+  if (keyword !== HBS_METADATA_TRAITS_KEY) {
+    return null;
+  }
+
+  const compressionFlagOffset = keywordEnd + 1;
+  const compressionMethodOffset = compressionFlagOffset + 1;
+  const languageTagOffset = compressionMethodOffset + 1;
+
+  if (languageTagOffset > data.length) {
+    return null;
+  }
+
+  if (data[compressionFlagOffset] !== 0) {
+    return null;
+  }
+
+  const languageTagEnd = data.indexOf(0, languageTagOffset);
+
+  if (languageTagEnd === -1) {
+    return null;
+  }
+
+  const translatedKeywordEnd = data.indexOf(0, languageTagEnd + 1);
+
+  if (translatedKeywordEnd === -1) {
+    return null;
+  }
+
+  return data.subarray(translatedKeywordEnd + 1).toString("utf8");
+}
+
 function extractTraitsChunk(png: Buffer) {
   if (!png.subarray(0, 8).equals(PNG_SIGNATURE)) {
     return null;
@@ -73,8 +113,11 @@ function extractTraitsChunk(png: Buffer) {
     const type = png.subarray(offset + 4, offset + 8).toString("ascii");
     const data = png.subarray(offset + 8, offset + 8 + length);
 
-    if (type === "tEXt") {
-      const traits = readTraitsTextChunk(data);
+    if (type === "tEXt" || type === "iTXt") {
+      const traits =
+        type === "iTXt"
+          ? readTraitsInternationalTextChunk(data)
+          : readTraitsTextChunk(data);
 
       if (traits !== null) {
         decodeHbs(traits);

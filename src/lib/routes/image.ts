@@ -1,3 +1,7 @@
+import {
+  encodeHbs as encodeHbsEnvelope,
+  type HbsPayload,
+} from "@tunnckocore/hbs";
 import type { APIContext } from "astro";
 import {
   DEFAULT_OPTIONS,
@@ -5,7 +9,7 @@ import {
   renderBlockscriptImage,
 } from "@/lib/blockscript-image";
 import { fetchEthscription, fetchEthscriptionContent } from "@/lib/fetch";
-import { encodeHbs } from "@/lib/hbs";
+import { camelCaseObjectKeys } from "@/lib/utils";
 
 // moonbird attrs
 // const metadataJson = stringify({
@@ -60,6 +64,14 @@ const attr = [
 const idPattern = /^(\d+|0x[a-fA-F0-9]{64})$/;
 const textModes = ["highscript", "lowscript", "monospace"] as const;
 
+function encodeHbs(payload: HbsPayload) {
+  return encodeHbsEnvelope(
+    Object.fromEntries(
+      camelCaseObjectKeys(payload as Record<string, string | number>),
+    ),
+  );
+}
+
 function textModeParam(value: string | null) {
   return textModes.find((mode) => mode === value) ?? DEFAULT_OPTIONS.textMode;
 }
@@ -110,11 +122,17 @@ export async function imageRoute(ctx: APIContext, fmt: "png" | "gif") {
     return ctx.redirect(`/${id}.${canonicalFormat}`);
   }
 
+  const ethscription = (await fetchEthscription(id)).contentBody.result;
+
+  if (!ethscription) {
+    return new Response("Ethscription not found", { status: 404 });
+  }
+
   let result: Awaited<ReturnType<typeof renderBlockscriptImage>>;
 
   try {
     result = await renderBlockscriptImage(res.contentBody, {
-      text: encodeHbs((await fetchEthscription(id)).contentBody.result),
+      text: encodeHbs(ethscription),
       attributes: attr,
       cell: positiveNumber(
         ctx.url.searchParams.get("cell"),

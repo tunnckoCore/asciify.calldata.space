@@ -270,6 +270,24 @@ export function camelCaseObjectKeys(obj: Record<string, string | number>) {
   });
 }
 
+export const PNG_SIGNATURE = Buffer.from([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
+
+export function imageCrc32(buffer: Buffer) {
+  let crc = 0xffffffff;
+
+  for (const byte of buffer) {
+    crc ^= byte;
+
+    for (let index = 0; index < 8; index += 1) {
+      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+    }
+  }
+
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 export const NOT_FULL_GLYPHS: Readonly<Record<string, readonly string[]>> =
   Object.freeze({
     " ": [

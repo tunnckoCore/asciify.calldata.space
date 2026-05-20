@@ -1,13 +1,12 @@
+import {
+  encodeHbs as encodeHbsEnvelope,
+  HBS_METADATA_TRAITS_KEY,
+  type HbsPayload,
+} from "@tunnckocore/hbs";
 import sharp from "sharp";
 import { HIGHSCRIPT } from "@/lib/glyphs-highscript";
 import { LOWSCRIPT } from "@/lib/glyphs-lowscript";
-import {
-  attributesToHbsPayload,
-  encodeHbs,
-  HBS_METADATA_TRAITS_KEY,
-  type HbsAttribute,
-  type HbsPayload,
-} from "@/lib/hbs";
+import { camelCaseObjectKeys, imageCrc32, PNG_SIGNATURE } from "@/lib/utils";
 
 export const DEFAULT_OPTIONS = {
   cell: 8,
@@ -19,6 +18,58 @@ export const DEFAULT_OPTIONS = {
   alphaThreshold: 12,
   textMode: "highscript",
 } as const;
+
+type HbsAttribute =
+  | {
+      trait_type: string;
+      value: string | number;
+    }
+  | {
+      trait_type: string;
+      trait_value: string | number;
+    }
+  | {
+      traitType: string;
+      traitValue: string | number;
+    };
+
+function getAttributeKey(attribute: HbsAttribute) {
+  if ("trait_type" in attribute) {
+    return attribute.trait_type;
+  }
+
+  return attribute.traitType;
+}
+
+function getAttributeValue(attribute: HbsAttribute) {
+  if ("value" in attribute) {
+    return attribute.value;
+  }
+
+  if ("trait_value" in attribute) {
+    return attribute.trait_value;
+  }
+
+  return attribute.traitValue;
+}
+
+function attributesToHbsPayload(attributes: readonly HbsAttribute[]) {
+  const payload: HbsPayload = {};
+
+  for (const attribute of attributes) {
+    payload[getAttributeKey(attribute)] = getAttributeValue(attribute);
+  }
+
+  return payload;
+}
+
+function encodeHbs(payload: HbsPayload) {
+  return encodeHbsEnvelope(
+    Object.fromEntries(
+      camelCaseObjectKeys(payload as Record<string, string | number>),
+    ),
+  );
+}
 
 type WidenDefaultOptions<T> = {
   -readonly [Key in keyof T]: T[Key] extends number
@@ -316,30 +367,12 @@ async function renderMonospacePage(
     .toBuffer();
 }
 
-const PNG_SIGNATURE = Buffer.from([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
-]);
-
-function crc32(buffer: Buffer) {
-  let crc = 0xffffffff;
-
-  for (const byte of buffer) {
-    crc ^= byte;
-
-    for (let index = 0; index < 8; index += 1) {
-      crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
-    }
-  }
-
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
 function makePngChunk(type: string, data: Buffer) {
   const typeBuffer = Buffer.from(type, "ascii");
   const length = Buffer.alloc(4);
   length.writeUInt32BE(data.length, 0);
   const crc = Buffer.alloc(4);
-  crc.writeUInt32BE(crc32(Buffer.concat([typeBuffer, data])), 0);
+  crc.writeUInt32BE(imageCrc32(Buffer.concat([typeBuffer, data])), 0);
 
   return Buffer.concat([length, typeBuffer, data, crc]);
 }
@@ -350,11 +383,15 @@ export function addPngTextChunk(png: Buffer, keyword: string, text: string) {
   }
 
   const chunk = makePngChunk(
-    "tEXt",
+    "iTXt",
     Buffer.concat([
       Buffer.from(keyword, "latin1"),
       Buffer.from([0]),
-      Buffer.from(text, "latin1"),
+      Buffer.from([0]),
+      Buffer.from([0]),
+      Buffer.from([0]),
+      Buffer.from([0]),
+      Buffer.from(text, "utf8"),
     ]),
   );
   let offset = 8;
