@@ -1,16 +1,27 @@
 import { bech32 } from "@scure/base";
 import sharp from "sharp";
 
-export const CELL_SIZE = 8;
-export const SOURCE_SCALE = 1;
-export const GLYPH_SCALE = 1;
-export const GLYPH_GAP = 1;
+export const DEFAULT_OPTIONS = {
+  cell: 8,
+  scale: 1,
+  size: 1,
+  gap: 1,
+  background: "#000",
+  transparentGlyph: "#fff",
+  alphaThreshold: 12,
+} as const;
 
-const BACKGROUND = "#000";
-const TRANSPARENT_GLYPH = "#fff";
-const ALPHA_THRESHOLD = 12;
+type WidenDefaultOptions<T> = {
+  -readonly [Key in keyof T]: T[Key] extends number
+    ? number
+    : T[Key] extends string
+      ? string
+      : T[Key];
+};
 
-export type BlockscriptImageOptions = {
+export type BlockscriptImageOptions = Partial<
+  WidenDefaultOptions<typeof DEFAULT_OPTIONS>
+> & {
   text?: string;
   outputFormat?: "png" | "gif";
 };
@@ -243,14 +254,24 @@ export async function renderBlockscriptImage(
     throw new Error("Input image dimensions could not be read");
   }
 
-  const glyphSize = Math.max(1, Math.ceil((CELL_SIZE - 1) * GLYPH_SCALE));
-  const cellSize = glyphSize + GLYPH_GAP;
-  const gridWidth = Math.max(1, Math.round(sourceWidth * SOURCE_SCALE));
-  const gridHeight = Math.max(1, Math.round(sourceHeight * SOURCE_SCALE));
+  const resolvedOptions = { ...DEFAULT_OPTIONS, ...options };
+  const glyphSize = Math.max(
+    1,
+    Math.ceil((resolvedOptions.cell - 1) * resolvedOptions.size),
+  );
+  const cellSize = glyphSize + resolvedOptions.gap;
+  const gridWidth = Math.max(
+    1,
+    Math.round(sourceWidth * resolvedOptions.scale),
+  );
+  const gridHeight = Math.max(
+    1,
+    Math.round(sourceHeight * resolvedOptions.scale),
+  );
   const outputWidth = gridWidth * cellSize;
   const outputHeight = gridHeight * cellSize;
-  const background = parseHexColor(BACKGROUND);
-  const transparentGlyph = parseHexColor(TRANSPARENT_GLYPH);
+  const background = parseHexColor(resolvedOptions.background);
+  const transparentGlyph = parseHexColor(resolvedOptions.transparentGlyph);
 
   const sourceData = (
     await sharp(bytes, sharpOptions)
@@ -283,7 +304,7 @@ export async function renderBlockscriptImage(
         const sourceIndex = sourcePage + (y * gridWidth + x) * 4;
         const alpha = sourceData[sourceIndex + 3] ?? 255;
 
-        if (alpha < ALPHA_THRESHOLD) {
+        if (alpha < resolvedOptions.alphaThreshold) {
           continue;
         }
 
@@ -318,7 +339,7 @@ export async function renderBlockscriptImage(
     outputWidth,
     outputHeight,
     pages,
-    GLYPH_GAP,
+    resolvedOptions.gap,
   );
 
   const wantsGif =
